@@ -857,7 +857,175 @@ Examples:
 - no signals → no household state queries
 
 ---
+### audio_overrides
 
+Defines room-specific audio behavior during Concierge interactions.
+
+Structure:
+
+audio_overrides:
+  tts_volume:
+  duck_level:
+  restore_after:
+
+---
+
+#### tts_volume
+
+Overrides the global TTS volume for this room.
+
+---
+
+#### duck_level
+
+Overrides the global ducking level when media is active.
+
+---
+
+#### restore_after
+
+Controls whether media returns to its previous state after TTS.
+
+---
+
+## Rules
+
+Room audio behavior must:
+
+- override global configuration when defined
+- remain deterministic
+- be applied consistently
+
+The system must apply audio configuration in this order:
+
+1. room override
+2. global audio configuration
+
+---
+
+## Runtime Behavior
+
+During voice interaction:
+
+1. determine speaker (existing logic)
+2. resolve audio behavior (room → global)
+3. capture current media state
+4. apply ducking (if enabled)
+5. set TTS volume
+6. deliver speech
+7. restore prior state (if configured)
+
+---
+
+## Constraints
+
+Audio handling must:
+
+- not delay execution
+- not require runtime discovery
+- use precomputed configuration
+
+---
+### retained_operational_values
+
+Defines room-scoped values captured from prior stable behavior for later deterministic reuse.
+
+Structure:
+
+retained_operational_values:
+  lights:
+    brightness:
+  lamps:
+    brightness:
+  media:
+    volume:
+    last_media:
+    last_genre:
+
+---
+
+Examples:
+
+- last stable lamp brightness in this room
+- last stable light brightness in this room
+- last played media reference for continue playing
+
+---
+
+## Rules
+
+Retained operational values must:
+
+- be room-scoped when the originating behavior is room-scoped
+- be captured deterministically from prior valid behavior
+- be reusable without runtime inference
+
+Retained operational values must not:
+
+- be treated as user-authored configuration
+- alter execution rules
+- become a second source of truth for media or device state
+---
+### identity_overrides
+
+Defines room-specific overrides for interaction behavior.
+
+Structure:
+
+identity_overrides:
+  persona:
+  tts_voice:
+  verbosity:
+
+---
+
+## Rules
+
+Room identity overrides:
+
+- take precedence over global identity configuration
+- must be optional
+- must not override execution behavior
+
+---
+
+## Resolution Order
+
+Interaction identity must be resolved as:
+
+1. room override
+2. user profile
+3. global default
+
+---
+### room_posture
+
+Defines the behavioral mode of the room.
+
+---
+
+Structure:
+
+room_posture:
+  mode:
+
+---
+
+Examples:
+
+- day
+- night
+- sleep
+- away
+
+---
+
+Rules:
+
+- posture influences interaction behavior
+- posture must not alter execution determinism
+
+---
 ## Final Principle
 
 The room defines what exists.

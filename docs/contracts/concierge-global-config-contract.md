@@ -54,7 +54,265 @@ Global Configuration consists of three layers:
 Defines the providers used for AI and voice capabilities.
 
 ---
+# IDENTITY AND PERSONA CONFIGURATION
 
+---
+
+## Purpose
+
+Defines how Concierge adapts interaction behavior and content presentation based on the identity of the user.
+
+This includes:
+
+- voice selection
+- verbosity and tone
+- interaction style
+- AI usage preferences
+- content selection and description style
+
+Identity allows Concierge to deliver the **same system truth** in a way that is appropriate for the person interacting with it.
+
+---
+
+## Core Principle
+
+Identity affects **how information is delivered**, not **what actions are executed**.
+
+---
+
+## Structure
+
+```
+identity:
+
+  enabled:
+
+  default_profile:
+    persona:
+    tts_voice:
+    verbosity:
+    allow_ai:
+
+    content_profile:
+      type:
+      detail_level:
+
+  profiles:
+
+    <person_id>:
+      name:
+
+      persona:
+      tts_voice:
+      verbosity:
+      allow_ai:
+
+      content_profile:
+        type:
+        detail_level:
+```
+
+---
+
+## Field Definitions
+
+### enabled
+
+Determines whether identity-aware behavior is active.
+
+When disabled:
+
+* default profile is always used
+* no identity-based variation occurs
+
+---
+
+### default\_profile
+
+Fallback profile used when identity is unknown or cannot be resolved.
+
+---
+
+### profiles
+
+Defines per-person overrides.
+
+Example:
+
+```
+profiles:
+
+  tom:
+    name: Tom
+
+    persona: concise
+    tts_voice: voice_tom
+    verbosity: minimal
+    allow_ai: true
+
+    content_profile:
+      type: technical
+      detail_level: high
+
+  guest:
+    name: Guest
+
+    persona: conversational
+    verbosity: standard
+    allow_ai: true
+
+    content_profile:
+      type: general
+      detail_level: medium
+```
+
+---
+
+### persona
+
+Defines communication style.
+
+Examples:
+
+- concise
+- conversational
+- advisory
+- technical
+
+---
+
+### tts\_voice
+
+Voice assigned to the user.
+
+Must correspond to a valid configured TTS voice.
+
+---
+
+### verbosity
+
+Controls response length and detail.
+
+Examples:
+
+- minimal → brief, direct
+- standard → balanced
+- detailed → expanded explanation
+
+---
+
+### allow\_ai
+
+Determines whether AI may be used for this user.
+
+Rules:
+
+- must follow global AI constraints
+- must not enable AI-driven execution
+
+---
+
+## Content Profile
+
+Defines how information is selected and presented across integrations.
+
+---
+
+### content\_profile.type
+
+Determines which description variant should be used.
+
+Examples:
+
+- general
+- technical
+- advisory
+
+---
+
+### content\_profile.detail\_level
+
+Controls how much detail should be presented.
+
+Examples:
+
+- low
+- medium
+- high
+
+---
+
+## Content Selection Behavior
+
+When presenting information:
+
+1. resolve identity (if available)
+2. select profile:
+  - room override (if present)
+  - user profile
+  - default profile
+3. determine content\_profile
+4. request matching content variant from integration
+5. apply persona and verbosity
+
+---
+
+## Rules
+
+Identity behavior must:
+
+- be deterministic when identity is known
+- fall back to default when unknown
+- apply consistently across voice and UI
+
+Content selection must:
+
+- use integration-provided variants
+- not alter underlying system state
+- remain consistent across interactions
+
+---
+
+## Constraints
+
+Identity must not:
+
+- influence execution decisions
+- override execution patterns
+- introduce ambiguity in system behavior
+
+Content profiles must not:
+
+- introduce alternate logic
+- modify signals or asset state
+- fabricate or infer missing data
+
+---
+
+## System Behavior Rules
+
+The system must:
+
+- apply identity consistently across sessions
+- deliver the same truth with different presentation styles
+- maintain alignment between voice and UI
+
+The system must not:
+
+- create divergent system behaviors for different users
+- allow identity to change what the system does
+
+---
+
+## Final Principle
+
+Identity personalization changes the experience, not the outcome.
+
+The system must always do the same thing.
+
+It may explain it differently.
+
+---
 ## AI Configuration
 
 AI must be explicitly configured and must follow local-first execution rules.
@@ -155,7 +413,183 @@ The system must not:
 - introduce latency due to unnecessary processing
 
 ---
+# AUDIO BEHAVIOR CONFIGURATION
 
+---
+
+## Purpose
+
+Defines how Concierge manages audio during voice interactions, including:
+
+- text-to-speech volume
+- media ducking behavior
+- post-interaction restoration
+
+This configuration ensures consistent and predictable audio behavior across the home.
+
+---
+
+## Structure
+
+audio_behavior:
+
+  tts:
+    default_volume:
+    max_volume:
+
+  ducking:
+    enabled:
+    duck_level:
+    restore_after:
+
+---
+
+## Field Definitions
+
+### tts.default_volume
+
+The default volume used for voice responses when no room override is defined.
+
+---
+
+### tts.max_volume
+
+Maximum allowed TTS volume for safety and consistency.
+
+---
+
+### ducking.enabled
+
+Controls whether active media should be reduced (ducked) during TTS playback.
+
+---
+
+### ducking.duck_level
+
+The volume level to reduce active media to during TTS.
+
+Example:
+
+0.3 → audio reduced to 30% of original level
+
+---
+
+### ducking.restore_after
+
+Determines whether original media levels should be restored after TTS completes.
+
+---
+
+## Rules
+
+Audio behavior must:
+
+- be deterministic
+- be applied consistently across all interactions
+- not delay execution
+
+The system must:
+
+- capture current media state before modification
+- restore previous state if configured
+
+The system must not:
+
+- guess or infer media state
+- rely on external history systems
+
+---
+
+## Relationship to Execution
+
+Audio behavior is applied during execution and follows the same principles:
+
+- preconfigured
+- immediate
+- non-blocking
+
+---
+
+## Override Model
+
+Global audio behavior defines defaults.
+
+Rooms may override these values through room configuration.
+
+The system must always apply:
+
+1. room override (if present)
+2. global configuration (fallback)
+
+---
+# MEDIA PROVIDER CONFIGURATION
+
+---
+
+## Purpose
+
+Defines how Concierge enables and uses media capabilities that may depend on Music Assistant.
+
+---
+
+## Structure
+
+media:
+
+  provider:
+    type:
+  use_music_assistant:
+
+---
+
+## Values
+
+type:
+
+- auto
+- music_assistant
+- home_assistant
+
+---
+
+## Behavior
+
+auto:
+
+- detect at startup or configuration refresh whether Music Assistant is installed
+- if installed and explicitly enabled, expose Music Assistant-dependent capabilities
+- otherwise use Home Assistant media_player capabilities only
+
+music_assistant:
+
+- require Music Assistant to be installed and explicitly enabled
+- expose Music Assistant-dependent capabilities only when both conditions are true
+
+home_assistant:
+
+- use native HA media_player only
+- do not expose Music Assistant-dependent capabilities
+
+---
+
+## Rules
+
+- provider capability enablement must be determined at startup or configuration refresh
+- runtime must not switch providers dynamically
+- Music Assistant usage must require explicit opt-in
+- execution must remain deterministic
+
+---
+
+## Fallback
+
+If selected provider is unavailable:
+
+- disable Music Assistant-dependent capabilities
+- fallback to home_assistant capability set
+- do not fail baseline media execution
+
+---
 ## AI Fallback Rules
 
 Structure:

@@ -288,7 +288,21 @@ Concierge must:
 - deliver response
 
 ---
+## Media Boundary
 
+Media-related data that depends on room playback state or recent playback history does not belong in Global Context.
+
+Examples:
+
+- last played in this room
+- continue playing reference
+- room-scoped playback memory
+
+These values are room-scoped retained operational values and must be modeled outside Global Context.
+
+Global Context may still expose broad informational media summaries only when they are integration-provided and globally meaningful.
+
+---
 ## Summarization Behavior
 
 Some context may require summarization.

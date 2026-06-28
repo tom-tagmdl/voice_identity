@@ -377,6 +377,17 @@ The system must not:
 - duplicate execution logic
 - introduce ambiguity in action routing
 
+Execution must be independent of identity.
+
+Identity may influence:
+
+- how a response is delivered
+- which description is used
+
+Identity must not influence:
+
+- which action is executed
+- how execution is performed
 ---
 
 # RELATIONSHIP TO OTHER PATTERNS

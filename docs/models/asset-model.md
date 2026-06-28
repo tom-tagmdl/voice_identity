@@ -67,11 +67,70 @@ Rules:
 Fields:
 
 - labels
-- descriptions:
-  - guest
-  - owner
+- description:
+
+  general:
+    summary:
+    detail:
+
+  technical:
+    summary:
+    detail:
+
+  advisory:
+    summary:
+    detail:
 - manufacturer
 - warranty
+
+## Description Variants
+
+Assets may expose multiple description variants based on audience.
+
+---
+
+## Types
+
+### general
+
+Human-friendly, easy to understand.
+
+Example:
+"The air is a bit too humid for this item."
+
+---
+
+### technical
+
+Precise, data-driven explanation.
+
+Example:
+"Humidity exceeds recommended preservation threshold."
+
+---
+
+### advisory
+
+Guidance-oriented explanation.
+
+Example:
+"Consider lowering humidity to prevent long-term damage."
+
+---
+
+## Rules
+
+Descriptions must:
+
+- be provided by the integration (not generated at runtime)
+- represent the same underlying condition
+- differ only in presentation and framing
+
+Descriptions must not:
+
+- conflict with each other
+- represent different system states
+- introduce new or inferred data
 
 Rules:
 

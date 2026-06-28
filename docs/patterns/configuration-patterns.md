@@ -91,8 +91,74 @@ Defines:
 - enabled signals
 - composite room participation
 
+learned_values:
+
+  lights:
+    brightness:
+  lamps:
+    brightness:
+  media:
+    volume:
+    last_media:
+    last_genre
+---
+# LEARNED VALUE PATTERN
+
 ---
 
+## Purpose
+
+Defines how the system captures and reuses retained operational values over time.
+
+Examples:
+
+- learned lighting brightness
+- learned media volume
+- preferred speaker behavior
+- room-scoped continue playing reference
+
+These values are not user-authored configuration.
+
+They represent stable, previously observed operating values that may be reused deterministically.
+
+---
+
+## Structure
+
+learned_values:
+
+  lights:
+    brightness:
+
+  media:
+    volume:
+    last_media:
+
+  audio:
+    speaker_profile:
+
+---
+
+## Rules
+
+Learned values must:
+
+- be captured during normal operation
+- be stored in helper-backed state, dedicated retained-value storage, or runtime cache
+- be reused by execution patterns (e.g. restore)
+
+Learned values may be persisted, but only through controlled service or store paths.
+
+Learned values must remain separate from user-authored configuration.
+
+Learned values must not:
+
+- be inferred without prior data
+- introduce nondeterministic behavior
+
+Runtime may read and apply learned values, but must not mutate configuration directly.
+
+---
 ## UI → Store Pattern
 
 ### Rule

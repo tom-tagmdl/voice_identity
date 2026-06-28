@@ -414,6 +414,14 @@ Rules:
 
 ## Behavior Rules
 
+Interactions must adapt presentation based on identity and content profile.
+
+Content selection must:
+
+- use integration-provided variants
+- not alter underlying data
+- remain deterministic
+
 Interactions must:
 
 - be derived from valid system state
@@ -427,7 +435,48 @@ Interactions must not:
 - exist without valid source data
 
 ---
+## Conversation Context
 
+---
+
+### Purpose
+
+Maintains short-lived interaction state to support follow-up requests.
+
+---
+
+### Structure
+
+conversation_context:
+
+  last_intent:
+  last_entity:
+  last_action:
+  last_response:
+
+---
+
+### Rules
+
+Conversation context must:
+
+- be short-lived and session-based
+- support clarification and follow-up
+
+Conversation context must not:
+
+- alter system state
+- persist beyond interaction scope
+
+---
+Media interactions must:
+
+- appear only when media is active
+- reflect current context
+- provide minimal, deterministic controls
+- degrade gracefully when metadata is limited
+
+---
 ## Failure Handling
 
 If source data is unavailable:

@@ -467,6 +467,68 @@ Services must:
 Sensitive configuration must not be exposed through service outputs.
 
 ---
+# CAPABILITY MODEL
+
+---
+
+## Purpose
+
+Defines callable system capabilities exposed by Concierge.
+
+Capabilities represent:
+
+- actions (play music)
+- informational queries (air quality)
+- advisory responses (why something happened)
+
+---
+
+## Structure
+
+capabilities:
+
+  <capability_id>:
+    type:
+    domain:
+    requires_context:
+
+Example:
+
+capabilities:
+
+  speak_air_quality:
+    type: informational
+
+  play_music:
+    type: action
+
+  explain_music_choice:
+    type: advisory
+
+---
+
+## Types
+
+- action
+- informational
+- advisory
+
+---
+
+## Rules
+
+Capabilities must:
+
+- map to a service or execution path
+- be deterministic
+- be reusable across voice and UI
+
+Capabilities must not:
+
+- embed logic in UI or automations
+- duplicate execution paths
+
+---
 
 # FINAL PRINCIPLE
 
