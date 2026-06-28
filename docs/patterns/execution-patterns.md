@@ -35,7 +35,7 @@ For any action, Concierge must use the following priority:
 2. Group
 3. Direct entity control
 
-This order must be strictly enforced.
+State restoration is a configured execution mode that may override entity-level behavior for specific capabilities.
 
 ---
 
@@ -394,6 +394,113 @@ Define execution preferences
 ## Runtime Architecture
 
 Defines execution flow
+
+---
+
+# 4. STATE RESTORATION EXECUTION
+
+## Definition
+
+State restoration allows entities to return to a previously known state instead of a fixed configuration.
+
+This supports natural interactions such as:
+
+- turn on the lamps → restore previous brightness levels  
+- resume media → restore previous volume  
+- turn lights back on → return to last known state  
+
+---
+
+## Rules
+
+- restoration must be explicitly configured  
+- restoration must use stored state  
+- restoration must not rely on inference or heuristics  
+
+The system must not:
+
+- guess previous values  
+- reconstruct state from history  
+- override explicit scene execution  
+
+---
+
+## State Source
+
+Restored state must come from:
+
+- last known valid state captured prior to change  
+- a runtime state snapshot or cache  
+
+Rules:
+
+- state must be captured before state-changing actions occur  
+- state must be stored in a runtime-accessible cache  
+- retrieval must be constant-time (no history queries)
+
+---
+
+## Execution Behavior
+
+Flow:
+
+1. retrieve stored state  
+2. validate entity availability  
+3. apply state using a single batched call when possible  
+
+---
+
+## Example
+
+Previous state:
+
+lights: brightness 60%  
+
+Command:  
+turn on the lamps  
+
+Execution:  
+light.turn_on with brightness 60%  
+
+---
+
+## Configuration Example
+
+execution_preferences:
+  lights:
+    mode: restore  
+
+---
+
+## Fallback Behavior
+
+If restore state is unavailable:
+
+- fallback to configured execution hierarchy (scene → group → entity)  
+- must not fail silently  
+
+---
+
+## Performance Rules
+
+- restoration must not introduce delay  
+- must not query history systems  
+- must use pre-stored runtime values  
+
+---
+
+## System Constraints
+
+Restoration must:
+
+- be deterministic  
+- be explainable  
+- be consistent across executions  
+
+Restoration must not:
+
+- override scenes triggered via alias  
+- compete with explicit execution paths  
 
 ---
 
