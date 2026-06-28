@@ -1,8 +1,8 @@
 # Homes That Behave Well
 
-Homes That Behave Well is the authoritative platform specification for building calm, predictable, explainable, and trustworthy Home Assistant-based systems.
+Homes That Behave Well is the authoritative platform specification for building calm, deterministic, explainable, and trustworthy Home Assistant-based homes.
 
-This repository is not a runtime integration. It is the source of truth for how the Homes Platform is designed, how responsibilities are divided, and how integrations must behave when working together.
+This repository is the source of truth for how the Homes Platform is designed, how responsibilities are divided, and how integrations must behave when working together.
 
 It governs the shared rules and contracts used across:
 
