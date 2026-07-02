@@ -57,6 +57,18 @@ Services are grouped into five categories:
 4. Configuration Services
 5. Context Services
 
+Scope model for configuration services:
+
+- concierge-wide services define whole-home policy
+- floor-wide services define floor defaults and shared infrastructure bindings
+- room-wide services define local overrides
+
+Effective resolution priority:
+
+1. room-wide
+2. floor-wide
+3. concierge-wide
+
 ---
 
 # 1. EXECUTION SERVICES
@@ -246,6 +258,47 @@ rules:
 - must validate structure
 - must enforce schema rules
 - must write to store only after validation
+- may override floor defaults for that room
+- must support room posture override for local calm behavior (including naps and early sleep)
+
+---
+
+## concierge.update_floor_config
+
+Updates floor configuration.
+
+input:
+  floor_id:
+  thermostat_entity_ids:
+  climate_strategy:
+  speaker_group_entity_ids:
+  media_defaults:
+  posture_default:
+
+rules:
+
+- must validate floor_id exists in Home Assistant floor registry
+- floor thermostat/HVAC bindings are the default for rooms on that floor
+- room config may override floor defaults
+- must not mutate room definitions directly
+
+---
+
+## concierge.get_floor_config
+
+Returns floor configuration and effective defaults.
+
+input:
+  floor_id:
+
+output:
+  floor_config:
+  effective_defaults:
+
+rules:
+
+- must return deterministic values
+- must include missing/invalid binding diagnostics
 
 ---
 
@@ -256,12 +309,40 @@ Updates composite room configuration.
 input:
   composite_id:
   configuration:
+  name:
+  area_ids:
 
 rules:
 
 - must validate areas exist
 - must enforce execution preferences
 - must not conflict with room definitions
+- must support merged room definitions where multiple areas resolve to one interaction context
+- must support composite rename and membership edits in one deterministic update
+- if area_ids becomes empty, composite must be dismantled and removed
+- if area_ids removes some members, removed rooms must return to standalone projection
+- composite inventory and selectors must be recalculated from remaining members only
+
+---
+
+## concierge.sync_composites
+
+Validates and rebuilds merged room runtime projections.
+
+input:
+  add_missing:
+  remove_invalid:
+
+output:
+  composites:
+  validation_errors:
+
+rules:
+
+- must validate every member area exists
+- must validate that voice invocation from any member area resolves to the same composite context
+- must reject ambiguous membership unless explicitly allowed by policy
+- must clear stale device references for rooms no longer in each composite
 
 ---
 
@@ -281,6 +362,23 @@ rules:
 
 ---
 
+## concierge.update_global_policy
+
+Updates concierge-wide policy.
+
+input:
+  quiet_hours:
+  urgent_bypass:
+  capability_toggles:
+
+rules:
+
+- quiet-hours policy is concierge-wide default
+- room posture may increase suppression at room scope
+- updates must validate policy consistency before persisting
+
+---
+
 ## concierge.update_execution_preferences
 
 Defines execution behavior.
@@ -293,6 +391,25 @@ rules:
 
 - must enforce execution hierarchy
 - must validate scenes and groups exist
+
+---
+
+## concierge.update_music_routing
+
+Updates Music Assistant routing policy at concierge, floor, or room scope.
+
+input:
+  scope:
+  scope_id:
+  routing:
+  tts_behavior:
+
+rules:
+
+- concierge scope enables capability and global safety policy
+- floor scope defines default routing/group behavior
+- room scope defines endpoint overrides
+- TTS duck/pause/resume behavior must be deterministic
 
 ---
 

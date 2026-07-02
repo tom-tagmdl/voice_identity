@@ -28,12 +28,29 @@ The area_id is the single source of truth for room identity.
 A room must be represented as:
 
 - area_id (primary key)
+- floor_id (resolved from Home Assistant floor registry)
 - environment configuration
 - optional spatial characteristics
 
 Rooms do not store derived values.
 
 Derived values are computed at runtime.
+
+---
+
+## Floor Relationship
+
+Rooms inherit defaults from the floor they belong to.
+
+Examples:
+
+- thermostat and HVAC zone defaults
+- floor speaker/media routing defaults
+- floor posture defaults
+
+Room-level configuration may override floor defaults for that room only.
+
+This must be deterministic and explainable.
 
 ---
 
@@ -181,11 +198,25 @@ Must:
 - use room context for interaction
 - adapt messaging based on room state and confidence
 - reference room-aware capabilities
+- honor room posture as the effective local calm/interaction override
 
 Must not:
 
 - define or compute environment models
 - override environment data
+
+---
+
+## Room Posture Rules
+
+Room posture is room-scoped and remains authoritative for local interaction suppression.
+
+Rules:
+
+- room posture may suppress info and attention interactions even when global quiet-hours are inactive
+- room posture may be temporarily set for scenarios such as naps or early sleep
+- room posture affects only the specific room and must not modify other rooms
+- urgent handling must follow explicit global urgent bypass policy
 
 ---
 

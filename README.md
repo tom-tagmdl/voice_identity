@@ -130,7 +130,14 @@ Suggested entry points:
 
 - [docs/philosophy/homes-that-behave-well.md](docs/philosophy/homes-that-behave-well.md)
 - [docs/architecture/canonical-architecture.md](docs/architecture/canonical-architecture.md)
+- [docs/architecture/concierge-runtime-architecture.md](docs/architecture/concierge-runtime-architecture.md)
+- [docs/architecture/person-identity-and-enrollment-architecture.md](docs/architecture/person-identity-and-enrollment-architecture.md)
+- [docs/architecture/voice-recognition-and-enrollment-architecture.md](docs/architecture/voice-recognition-and-enrollment-architecture.md)
+- [docs/architecture/voice-identity-trust-and-data-residency-policy.md](docs/architecture/voice-identity-trust-and-data-residency-policy.md)
+- [docs/architecture/identity-governance-reference.md](docs/architecture/identity-governance-reference.md)
 - [docs/contracts/concierge-contract.md](docs/contracts/concierge-contract.md)
+- [docs/contracts/person-identity-contract.md](docs/contracts/person-identity-contract.md)
+- [docs/contracts/voice-recognition-contract.md](docs/contracts/voice-recognition-contract.md)
 - [docs/contracts/asset-intelligence-contract.md](docs/contracts/asset-intelligence-contract.md)
 
 ---
@@ -145,6 +152,17 @@ Top-level structure:
 - `docs/models/` — data and runtime representations
 - `docs/patterns/` — implementation rules for execution, interaction, messaging, UI, and configuration
 - `examples/` — scenarios and interaction flows used to illustrate intended behavior
+
+Person-aware interaction architecture is defined as a Concierge sub-project and includes:
+
+- person identity and enrollment architecture
+- voice recognition and enrollment architecture
+- person identity contract
+- voice recognition contract
+- person profile model
+- voice profile model
+- person identity runtime and UI patterns
+- voice recognition patterns
 
 ---
 

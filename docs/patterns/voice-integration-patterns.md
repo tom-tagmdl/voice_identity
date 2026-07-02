@@ -199,6 +199,84 @@ Hierarchy:
 
 ---
 
+## Multi-Assistant Responder Election
+
+In homes with multiple voice assistants, more than one device may hear the same wake event.
+
+Concierge must coordinate a single responder.
+
+Rules:
+
+- run a short responder election window
+- select one primary responder using context signals
+- suppress duplicate responses from non-primary responders
+- preserve conversation ownership when a conversation is already active
+
+Responder election inputs may include:
+
+- interaction space confidence
+- room proximity
+- presence and likely speaker
+- recent successful responder history
+- posture constraints
+
+---
+
+## Speaker Attribution Pattern
+
+Speaker attribution is optional but recommended for person-aware interaction quality.
+
+Attribution output should include:
+
+- person candidate
+- confidence
+- attribution factors
+
+Rules:
+
+- attribution must be treated as probabilistic context
+- low-confidence attribution must fall back to neutral style
+- attribution must not be used as authentication authority
+
+---
+
+## Person-Aware Style Pattern
+
+When person context is available, Concierge may adapt response style.
+
+Examples:
+
+- direct and brief confirmations
+- conversational and detailed summaries
+
+Rules:
+
+- style may change delivery, not action correctness
+- style may not bypass safety confirmation requirements
+- posture policy may override style to reduce disturbance
+
+---
+
+## Opt-In Learning Mode Pattern
+
+Learning mode enables guided enrollment and adaptation.
+
+Learning mode should support:
+
+- explicit person consent
+- optional voice training samples
+- style preference setup
+- correction capture for attribution and style tuning
+
+Rules:
+
+- enrollment must never be silent
+- opt-out and profile deletion must be explicit
+- adaptation must be reversible and explainable
+- behavior shifts must be gradual, not abrupt
+
+---
+
 ## Composite Room Interaction
 
 When a command originates from a room:

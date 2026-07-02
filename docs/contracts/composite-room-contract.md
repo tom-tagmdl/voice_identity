@@ -29,6 +29,12 @@ A Composite Room is a virtual construct that groups multiple Home Assistant area
 
 It is used exclusively by Concierge and must not modify underlying Home Assistant area definitions.
 
+Merged room is an allowed user-facing term for a Composite Room.
+
+Example:
+
+- Upstairs Public Space = Kitchen + Dining Room + Living Room
+
 ---
 
 ## Composite Structure
@@ -82,6 +88,8 @@ Rules:
 - all values must map to valid areas
 - duplication is not allowed
 - order must not imply priority
+- all member areas must belong to the same floor
+- cross-floor composite membership is not allowed
 
 ---
 
@@ -184,6 +192,14 @@ Rules:
 - composite context must override area context
 - resolution must be deterministic
 
+### Voice Invocation Rule
+
+If any voice assistant device in any member area is invoked, context must resolve to the composite when that area belongs to an enabled composite.
+
+This means a request from Kitchen, Dining Room, or Living Room voice endpoints resolves to the same merged room context when those areas are part of the same composite.
+
+Resolution must not depend on which member room started the request.
+
 ---
 
 ## Inventory Aggregation
@@ -199,6 +215,8 @@ Rules:
 - entities must not be duplicated
 - ordering must be deterministic
 - state must reflect real-time values
+
+All controllable entities in member areas are considered part of the merged room execution inventory unless explicitly excluded by configuration.
 
 ---
 
@@ -216,6 +234,10 @@ Execution must:
 
 - be performed with a single service call when possible
 - avoid per-room iteration
+
+For merged room execution, actions must target the aggregated entity set for all member areas.
+
+The system must not require room-by-room manual invocation once a merged room is resolved.
 
 ---
 
@@ -315,6 +337,25 @@ Composite rooms must be:
 - stored in Concierge configuration
 - independent of Home Assistant area model
 
+Main Concierge UI may expose merged room creation from room cards.
+
+When merged room projection is active in main view:
+
+- one composite tile replaces member room tiles
+- composite tile includes member room names for quick reference
+
+Composite edit operations must support:
+
+- renaming the composite
+- removing one or more member rooms
+- full composite dismantle when no member rooms remain
+
+When member rooms are removed:
+
+- removed rooms return to standalone room projection
+- composite inventory must be recalculated using remaining member areas only
+- removed room devices must not remain in composite inventory or selectors
+
 Composite definitions must not be:
 
 - inferred automatically
@@ -351,6 +392,7 @@ Composite rooms must not:
 - alter underlying entity behavior
 - introduce execution ambiguity
 - duplicate logic across areas
+- retain stale room device references after membership changes
 
 ---
 

@@ -25,6 +25,27 @@ No layer may take on the responsibility of another.
 
 ---
 
+## Shared Identity Vocabulary
+
+Identity and voice terms must be used consistently across the platform.
+
+Authoritative reference:
+
+- [docs/architecture/identity-governance-reference.md](identity-governance-reference.md)
+
+Key terms:
+
+- Identity Context: the current person-aware context used by Concierge
+- Person Profile: the Home Assistant-person-based preference record for style and behavior
+- Voice Profile: the enrolled speaker record used for speaker attribution
+- Speaker Attribution Snapshot: the runtime match result for a speech event
+- Interaction Style Context: the current delivery style chosen for the active person
+- Listening Area: the arbitration area used to decide which assistant should respond
+- Interaction Space: the active room or merged area where interaction is happening
+- Local-first: keep identity and voice data inside the home network by default
+
+---
+
 ## Platform Development Standards
 
 All integrations and components in this system must follow strict development standards.

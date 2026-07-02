@@ -303,6 +303,23 @@ Rules:
 
 - must not be inferred dynamically
 - must not alter underlying room model
+- must validate all member rooms are on the same floor
+- must reject cross-floor merged room definitions
+- must persist merged room display name separately from member area ids
+- must support composite membership edits (add/remove member rooms)
+- must support composite rename without changing composite identity
+
+Composite edit lifecycle rules:
+
+- removing one member room must return that room to standalone room projection
+- removing all member rooms must dismantle the composite and remove composite references
+- composite snapshots must be recalculated after every membership change
+- removed room devices must be excluded from composite device snapshots after update
+
+UI projection requirements:
+
+- merged composite replaces member room cards in main view projection
+- composite projection must include member room name list for operator clarity
 
 ---
 
@@ -410,7 +427,7 @@ Configuration must:
 
 Sensitive data must only exist in:
 
-- global configuration (gear level)
+- global configuration layer
 
 ---
 

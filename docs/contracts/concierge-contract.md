@@ -18,6 +18,7 @@ Concierge owns:
 - Orchestration across integrations
 - Messaging and communication behavior
 - Context awareness (room, user presence, mode)
+- Person-aware interaction style application (when available)
 - Decision about when and how to respond
 
 Concierge does not own:
@@ -116,6 +117,46 @@ Concierge controls all communication using defined levels:
 - In night posture, suppress all except urgent
 - Global configuration may define the default night behavior, but rooms control the effective mode
 
+### Quiet-Hours and Room Posture
+- Quiet-hours is configured concierge-wide and defines the default suppression window
+- Room posture remains room-wide and may increase suppression for that room at any time (for example: naps or early bedtime)
+- Room posture overrides floor and concierge defaults for that room only
+- Urgent delivery follows explicit global urgent bypass policy
+
+---
+
+## Scope Model
+
+Concierge configuration is layered:
+
+1. concierge-wide
+2. floor-wide
+3. room-wide
+
+Effective resolution uses most-specific valid scope:
+
+- room override
+- else floor default
+- else concierge default
+
+This scope model must be used for communication behavior, execution target routing, and media/climate defaults.
+
+Merged rooms (composites) are valid room-context targets and must route deterministically from any member area.
+
+---
+
+## Floor-Level Infrastructure Boundaries
+
+Some capabilities are shared at floor scope and should not default to room scope.
+
+Examples:
+
+- thermostats and HVAC zone entities
+- floor speaker groups
+- floor media routing defaults
+
+Room-level overrides remain allowed for explicit exceptions.
+
 ---
 
 ## Context Awareness
@@ -132,6 +173,44 @@ Context must be:
 - deterministic
 - derived from system state
 - not inferred unpredictably
+
+---
+
+## Person-Aware Interaction Boundaries
+
+Concierge may apply person context to communication style.
+
+Examples:
+
+- concise responses for direct-style users
+- richer detail for conversational-style users
+
+Person-aware behavior must follow these rules:
+
+- identity context may change delivery style
+- identity context must not change foundational truth
+- identity context must not bypass safety confirmation rules
+- low-confidence identity must degrade to neutral style
+
+Person-aware behavior must remain explainable and reversible.
+
+Enrollment and consent rules are defined in person-identity-contract.md.
+
+---
+
+## Multi-Assistant Responder Responsibility
+
+When multiple voice assistants hear the same request, Concierge must coordinate a single responder outcome.
+
+Concierge must:
+
+- evaluate room context and interaction space
+- evaluate person-aware context when available
+- elect one primary responder
+- suppress duplicate responses
+- preserve active conversation ownership where possible
+
+This behavior must remain deterministic and explainable.
 
 ---
 
