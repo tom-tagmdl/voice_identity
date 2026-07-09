@@ -1,3 +1,4 @@
+<img width="1536" height="1024" alt="voice_identity" src="https://github.com/user-attachments/assets/d1dcc208-242b-4667-a603-90a694395d8d" />
 # Voice Identity
 
 Voice Identity is the HTBW local-first speaker identity service.
