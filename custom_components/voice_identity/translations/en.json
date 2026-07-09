@@ -1,0 +1,11 @@
+{
+  "title": "Voice Identity",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Voice Identity",
+        "description": "Set up Voice Identity scaffold integration."
+      }
+    }
+  }
+}
