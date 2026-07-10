@@ -4,8 +4,122 @@
     "step": {
       "user": {
         "title": "Voice Identity",
-        "description": "Set up Voice Identity scaffold integration."
+        "description": "Set up Voice Identity and choose the runtime defaults for services, storage, generation, diagnostics, and attribution.",
+        "data": {
+          "service_enabled": "Enable the service runtime",
+          "service_startup_timeout_seconds": "Service startup timeout (seconds)",
+          "service_max_cached_voiceprints": "Maximum cached voiceprints",
+          "storage_provider": "Storage provider",
+          "storage_base_path": "Storage base path",
+          "storage_encryption_required": "Require storage encryption",
+          "generation_model_preference": "Preferred model",
+          "generation_min_sample_count": "Minimum sample count",
+          "generation_max_sample_count": "Maximum sample count",
+          "generation_quality_threshold": "Quality threshold",
+          "generation_supported_models": "Supported models",
+          "cleanup_enabled": "Enable cleanup",
+          "cleanup_session_timeout_seconds": "Cleanup session timeout (seconds)",
+          "cleanup_reconcile_on_startup": "Reconcile on startup",
+          "diagnostics_enabled": "Enable diagnostics",
+          "diagnostics_allowlist_only": "Restrict diagnostics to the allowlist",
+          "diagnostics_include_runtime_metrics": "Include runtime metrics in diagnostics",
+          "feature_flags_enable_runtime_attribution": "Enable runtime attribution",
+          "feature_flags_enable_repairs": "Enable repairs",
+          "feature_flags_enable_experimental_models": "Enable experimental models",
+          "attribution_default_confidence_threshold": "Default confidence threshold",
+          "attribution_max_candidate_scope_size": "Maximum candidate scope size",
+          "attribution_require_attribution_for_identity_context": "Require attribution for identity context"
+        },
+        "data_description": {
+          "service_enabled": "Controls whether the Voice Identity runtime is active for this entry.",
+          "service_startup_timeout_seconds": "How long Home Assistant should wait for Voice Identity to start before timing out.",
+          "service_max_cached_voiceprints": "Maximum number of voiceprints to keep cached in memory.",
+          "storage_provider": "Storage backend used to persist voiceprint artifacts and related data.",
+          "storage_base_path": "Folder name or path segment used for Voice Identity storage under Home Assistant's config directory.",
+          "storage_encryption_required": "Requires encrypted storage for persisted artifacts when supported by the backend.",
+          "generation_model_preference": "Primary model to prefer when generating or matching voiceprints.",
+          "generation_min_sample_count": "Minimum number of samples required before generation can proceed.",
+          "generation_max_sample_count": "Maximum number of samples accepted for a single generation run.",
+          "generation_quality_threshold": "Minimum quality score a sample must meet to be accepted.",
+          "generation_supported_models": "Comma-separated list of model names this integration may use.",
+          "cleanup_enabled": "Controls whether background cleanup tasks are enabled.",
+          "cleanup_session_timeout_seconds": "How long an idle session can remain open before cleanup considers it stale.",
+          "cleanup_reconcile_on_startup": "Runs reconciliation checks when Voice Identity starts.",
+          "diagnostics_enabled": "Enables diagnostics data collection and reporting.",
+          "diagnostics_allowlist_only": "Restricts diagnostics to approved fields only.",
+          "diagnostics_include_runtime_metrics": "Includes live runtime metrics in diagnostic output.",
+          "feature_flags_enable_runtime_attribution": "Enables runtime speaker attribution features.",
+          "feature_flags_enable_repairs": "Enables repair recommendations and related services.",
+          "feature_flags_enable_experimental_models": "Allows experimental models to be considered by the integration.",
+          "attribution_default_confidence_threshold": "Baseline confidence score required before attribution is accepted.",
+          "attribution_max_candidate_scope_size": "Maximum number of candidate matches evaluated during attribution.",
+          "attribution_require_attribution_for_identity_context": "Requires attribution before identity context data can be returned."
+        }
       }
+    },
+    "error": {
+      "invalid_options": "The selected settings are not valid."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Voice Identity Settings",
+        "description": "Update the runtime defaults for services, storage, generation, diagnostics, and attribution.",
+        "data": {
+          "service_enabled": "Enable the service runtime",
+          "service_startup_timeout_seconds": "Service startup timeout (seconds)",
+          "service_max_cached_voiceprints": "Maximum cached voiceprints",
+          "storage_provider": "Storage provider",
+          "storage_base_path": "Storage base path",
+          "storage_encryption_required": "Require storage encryption",
+          "generation_model_preference": "Preferred model",
+          "generation_min_sample_count": "Minimum sample count",
+          "generation_max_sample_count": "Maximum sample count",
+          "generation_quality_threshold": "Quality threshold",
+          "generation_supported_models": "Supported models",
+          "cleanup_enabled": "Enable cleanup",
+          "cleanup_session_timeout_seconds": "Cleanup session timeout (seconds)",
+          "cleanup_reconcile_on_startup": "Reconcile on startup",
+          "diagnostics_enabled": "Enable diagnostics",
+          "diagnostics_allowlist_only": "Restrict diagnostics to the allowlist",
+          "diagnostics_include_runtime_metrics": "Include runtime metrics in diagnostics",
+          "feature_flags_enable_runtime_attribution": "Enable runtime attribution",
+          "feature_flags_enable_repairs": "Enable repairs",
+          "feature_flags_enable_experimental_models": "Enable experimental models",
+          "attribution_default_confidence_threshold": "Default confidence threshold",
+          "attribution_max_candidate_scope_size": "Maximum candidate scope size",
+          "attribution_require_attribution_for_identity_context": "Require attribution for identity context"
+        },
+        "data_description": {
+          "service_enabled": "Controls whether the Voice Identity runtime is active for this entry.",
+          "service_startup_timeout_seconds": "How long Home Assistant should wait for Voice Identity to start before timing out.",
+          "service_max_cached_voiceprints": "Maximum number of voiceprints to keep cached in memory.",
+          "storage_provider": "Storage backend used to persist voiceprint artifacts and related data.",
+          "storage_base_path": "Folder name or path segment used for Voice Identity storage under Home Assistant's config directory.",
+          "storage_encryption_required": "Requires encrypted storage for persisted artifacts when supported by the backend.",
+          "generation_model_preference": "Primary model to prefer when generating or matching voiceprints.",
+          "generation_min_sample_count": "Minimum number of samples required before generation can proceed.",
+          "generation_max_sample_count": "Maximum number of samples accepted for a single generation run.",
+          "generation_quality_threshold": "Minimum quality score a sample must meet to be accepted.",
+          "generation_supported_models": "Comma-separated list of model names this integration may use.",
+          "cleanup_enabled": "Controls whether background cleanup tasks are enabled.",
+          "cleanup_session_timeout_seconds": "How long an idle session can remain open before cleanup considers it stale.",
+          "cleanup_reconcile_on_startup": "Runs reconciliation checks when Voice Identity starts.",
+          "diagnostics_enabled": "Enables diagnostics data collection and reporting.",
+          "diagnostics_allowlist_only": "Restricts diagnostics to approved fields only.",
+          "diagnostics_include_runtime_metrics": "Includes live runtime metrics in diagnostic output.",
+          "feature_flags_enable_runtime_attribution": "Enables runtime speaker attribution features.",
+          "feature_flags_enable_repairs": "Enables repair recommendations and related services.",
+          "feature_flags_enable_experimental_models": "Allows experimental models to be considered by the integration.",
+          "attribution_default_confidence_threshold": "Baseline confidence score required before attribution is accepted.",
+          "attribution_max_candidate_scope_size": "Maximum number of candidate matches evaluated during attribution.",
+          "attribution_require_attribution_for_identity_context": "Requires attribution before identity context data can be returned."
+        }
+      }
+    },
+    "error": {
+      "invalid_options": "The selected settings are not valid."
     }
   }
 }

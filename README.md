@@ -118,6 +118,18 @@ Production-hardening artifacts VI-121 through VI-129 are implemented and validat
 - No external telemetry export is provided.
 - Release tagging should occur only after GitHub Actions validation workflows are green.
 
+## Non-Applicable Gold Rules
+
+Voice Identity is service-only, so some Home Assistant Gold expectations are not
+applicable and should not be treated as missing work:
+
+- No device discovery flow is required.
+- No firmware update support is required.
+- No device or entity surface is required unless a future feature introduces
+	one intentionally.
+- No reauth flow is required unless the integration gains expiring credentials
+	or another external dependency that needs it.
+
 ## Troubleshooting
 
 - Integration does not load: verify manifest/domain alignment and restart Home Assistant.

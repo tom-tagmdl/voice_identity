@@ -50,6 +50,7 @@ from custom_components.voice_identity.storage_provider import LocalFileVoiceprin
 from custom_components.voice_identity.voiceprint_lifecycle import VoiceprintLifecycleHealth
 from custom_components.voice_identity.voiceprint_revision import VoiceprintRevisionHealth
 from custom_components.voice_identity.voiceprint_registry import VoiceprintRegistryHealth
+from custom_components.voice_identity.services import async_register_services, SERVICE_GET_HEALTH
 
 
 class _FakeVoiceprintRegistry:
@@ -232,8 +233,53 @@ class _Hass:
 
 class _Entry:
     entry_id = "entry-1"
-    data: dict[str, object] = {}
-    options: dict[str, object] = {}
+
+    def __init__(self, *, data: dict[str, object] | None = None, options: dict[str, object] | None = None) -> None:
+        self.data = data or {}
+        self.options = options or {}
+
+
+def _entry_payload() -> dict[str, object]:
+    return {
+        "config_schema_version": 1,
+        "service": {
+            "enabled": True,
+            "startup_timeout_seconds": 30,
+            "max_cached_voiceprints": 2500,
+        },
+        "storage": {
+            "provider": "local_filesystem",
+            "base_path": "voice_identity",
+            "encryption_required": True,
+        },
+        "generation": {
+            "model_preference": "ecapa_v1",
+            "min_sample_count": 6,
+            "max_sample_count": 12,
+            "quality_threshold": 0.75,
+            "supported_models": ("ecapa_v1",),
+        },
+        "cleanup": {
+            "enabled": True,
+            "session_timeout_seconds": 900,
+            "reconcile_on_startup": True,
+        },
+        "diagnostics": {
+            "enabled": True,
+            "allowlist_only": True,
+            "include_runtime_metrics": True,
+        },
+        "feature_flags": {
+            "enable_runtime_attribution": False,
+            "enable_repairs": True,
+            "enable_experimental_models": False,
+        },
+        "attribution": {
+            "default_confidence_threshold": 0.7,
+            "max_candidate_scope_size": 25,
+            "require_attribution_for_identity_context": False,
+        },
+    }
 
 
 @pytest.mark.asyncio
@@ -440,3 +486,50 @@ async def test_unload_does_not_disrupt_other_entry_runtime_data() -> None:
     assert result is True
     assert "other-entry" in hass.data[DOMAIN]
     assert hass.data[DOMAIN]["other-entry"]["preserve"] is True
+
+
+@pytest.mark.asyncio
+async def test_setup_service_unload_smoke_across_full_surface() -> None:
+    original_registry_cls = integration_module.VoiceprintRegistry
+    original_lifecycle_cls = integration_module.VoiceprintLifecycleManager
+    original_revision_cls = integration_module.VoiceprintRevisionManager
+    original_persistence_cls = integration_module.ArtifactPersistenceEngine
+    original_integrity_cls = integration_module.ArtifactIntegrityValidator
+    original_generation_cls = integration_module.GenerationOrchestrator
+    integration_module.VoiceprintRegistry = _FakeVoiceprintRegistry
+    integration_module.VoiceprintLifecycleManager = _FakeVoiceprintLifecycleManager
+    integration_module.VoiceprintRevisionManager = _FakeVoiceprintRevisionManager
+    integration_module.ArtifactPersistenceEngine = _FakeArtifactPersistenceEngine
+    integration_module.ArtifactIntegrityValidator = _FakeArtifactIntegrityValidator
+    integration_module.GenerationOrchestrator = _FakeGenerationOrchestrator
+
+    hass = _Hass()
+    entry = _Entry(data=_entry_payload())
+
+    try:
+        setup_result = await async_setup_entry(hass, entry)
+        assert setup_result is True
+
+        await async_register_services(hass)
+        assert hass.services.has_service(DOMAIN, SERVICE_GET_HEALTH)
+
+        health = await hass.services.async_call(
+            DOMAIN,
+            SERVICE_GET_HEALTH,
+            {"entry_id": entry.entry_id},
+            return_response=True,
+        )
+        assert health["success"] is True
+        assert health["entry_id"] == entry.entry_id
+        assert health["health"]["status"] == "healthy"
+
+        unload_result = await async_unload_entry(hass, entry)
+        assert unload_result is True
+        assert entry.entry_id not in hass.data[DOMAIN]
+    finally:
+        integration_module.VoiceprintRegistry = original_registry_cls
+        integration_module.VoiceprintLifecycleManager = original_lifecycle_cls
+        integration_module.VoiceprintRevisionManager = original_revision_cls
+        integration_module.ArtifactPersistenceEngine = original_persistence_cls
+        integration_module.ArtifactIntegrityValidator = original_integrity_cls
+        integration_module.GenerationOrchestrator = original_generation_cls

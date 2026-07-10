@@ -1,3 +1,5 @@
+<img alt="Voice Identity logo" src="../../custom_components/voice_identity/brand/voice_identity.png" />
+
 # Voice Identity Developer Wiki
 
 ## Overview
@@ -15,6 +17,7 @@ Voice Identity is a standalone Home Assistant custom integration with local-firs
 
 ## Navigation
 
+- [Setup](setup.md)
 - [Architecture](architecture.md)
 - [Contracts](contracts.md)
 - [Services](services.md)

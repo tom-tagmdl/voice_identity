@@ -85,6 +85,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except VoiceIdentityConfigurationError as err:
         raise ConfigEntryError(f"Voice Identity configuration is invalid: {err}") from err
 
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+
     capability_registry = VoiceIdentityCapabilityRegistry.from_configuration_manager(config_manager)
 
     storage_provider = LocalFileVoiceprintStorageProvider.from_configuration_manager(
@@ -321,6 +323,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
     await async_register_services(hass)
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload Voice Identity when the config entry changes."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

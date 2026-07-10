@@ -5,7 +5,7 @@
     "@tom-tagmdl"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/tom-tagmdl/voice_identity",
+  "documentation": "https://github.com/tom-tagmdl/voice_identity/blob/main/docs/wiki/index.md",
   "integration_type": "service",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/tom-tagmdl/voice_identity/issues",
