@@ -1,1 +1,99 @@
-{}
+get_diagnostics:
+  name: Get diagnostics
+  description: >-
+    Return a safe, allowlisted diagnostics projection for Voice Identity.
+  fields:
+    entry_id:
+      required: false
+      example: 01JABCDEF1234567890XYZ
+      selector:
+        text:
+
+get_repairs:
+  name: Get repairs
+  description: >-
+    Return deterministic, read-only repair recommendations derived from Voice Identity diagnostics.
+  fields:
+    entry_id:
+      required: false
+      example: 01JABCDEF1234567890XYZ
+      selector:
+        text:
+
+get_health:
+  name: Get health
+  description: >-
+    Return deterministic runtime health aggregation for Voice Identity components.
+  fields:
+    entry_id:
+      required: false
+      example: 01JABCDEF1234567890XYZ
+      selector:
+        text:
+
+get_telemetry:
+  name: Get telemetry
+  description: >-
+    Return privacy-safe operational telemetry projection for Voice Identity runtime.
+  fields:
+    entry_id:
+      required: false
+      example: 01JABCDEF1234567890XYZ
+      selector:
+        text:
+
+attribute_speaker:
+  name: Attribute speaker
+  description: >-
+    Return advisory, privacy-safe speaker attribution evidence for one runtime request.
+  fields:
+    entry_id:
+      required: false
+      example: 01JABCDEF1234567890XYZ
+      selector:
+        text:
+    audio_ref:
+      required: false
+      example: session_audio_ref_001
+      selector:
+        text:
+    candidate_scope:
+      required: false
+      example:
+        - person_001
+        - person_002
+      selector:
+        object:
+    model_preference:
+      required: false
+      example: ecapa_v1
+      selector:
+        text:
+
+get_identity_context:
+  name: Get identity context
+  description: >-
+    Return canonical, privacy-safe identity context generated from advisory attribution.
+  fields:
+    entry_id:
+      required: false
+      example: 01JABCDEF1234567890XYZ
+      selector:
+        text:
+    audio_ref:
+      required: false
+      example: session_audio_ref_001
+      selector:
+        text:
+    candidate_scope:
+      required: false
+      example:
+        - person_001
+        - person_002
+      selector:
+        object:
+    model_preference:
+      required: false
+      example: ecapa_v1
+      selector:
+        text:

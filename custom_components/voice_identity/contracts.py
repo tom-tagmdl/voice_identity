@@ -52,3 +52,15 @@ class SpeakerAttributionResult:
     threshold: float | None = None
     reason_code: str = ""
     failure_message_safe: str = ""
+
+
+@dataclass(slots=True, frozen=True)
+class IdentityContext:
+    state: str
+    person_id: str | None = None
+    voice_profile_id: str | None = None
+    confidence: float | None = None
+    confidence_band: str | None = None
+    reason_code: str | None = None
+    source: str = "voice_identity"
+    generated_at: str = field(default_factory=_utcnow_iso)

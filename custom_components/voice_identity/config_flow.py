@@ -5,7 +5,7 @@ from __future__ import annotations
 from homeassistant import config_entries
 from homeassistant.core import callback
 
-from .const import DOMAIN
+from .const import CONFIG_SCHEMA_VERSION_CURRENT, CONF_CONFIG_SCHEMA_VERSION, DOMAIN
 
 
 class VoiceIdentityConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -20,7 +20,12 @@ class VoiceIdentityConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
-        return self.async_create_entry(title="Voice Identity", data={})
+        return self.async_create_entry(
+            title="Voice Identity",
+            data={
+                CONF_CONFIG_SCHEMA_VERSION: CONFIG_SCHEMA_VERSION_CURRENT,
+            },
+        )
 
     @staticmethod
     @callback
@@ -32,7 +37,7 @@ class VoiceIdentityOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Voice Identity scaffold."""
 
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:

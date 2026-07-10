@@ -1,7 +1,9 @@
 {
   "name": "Voice Identity",
   "content_in_root": false,
-  "country": "US",
+  "domains": [
+    "voice_identity"
+  ],
   "homeassistant": "2024.12.0",
   "render_readme": true
 }

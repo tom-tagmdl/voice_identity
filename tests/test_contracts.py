@@ -3,6 +3,7 @@ from dataclasses import asdict
 from voice_identity.contracts import (
     FingerprintGenerationRequest,
     FingerprintGenerationResult,
+    IdentityContext,
     SpeakerAttributionRequest,
     SpeakerAttributionResult,
 )
@@ -45,5 +46,22 @@ def test_attribution_result_has_safe_fields_and_no_raw_vector_default() -> None:
 
     assert "reason_code" in payload
     assert "failure_message_safe" in payload
+    assert "vector" not in payload
+    assert "embedding" not in payload
+
+
+def test_identity_context_contract_has_safe_fields() -> None:
+    context = IdentityContext(
+        state="unknown",
+        person_id=None,
+        voice_profile_id=None,
+        confidence=None,
+        confidence_band=None,
+        reason_code="identity_unknown",
+    )
+    payload = asdict(context)
+
+    assert payload["state"] == "unknown"
+    assert payload["source"] == "voice_identity"
     assert "vector" not in payload
     assert "embedding" not in payload

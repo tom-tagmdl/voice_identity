@@ -58,3 +58,11 @@ Never expose:
 - embeddings
 - biometric internals
 - person-sensitive internals beyond required IDs
+
+## Compatibility and Migration Validation
+
+Contract and schema compatibility behavior, migration-required validation, and
+supported/unsupported path coverage are defined by VI-126 matrix tests and
+documentation:
+
+- docs/architecture/voice_identity/vi-126-compatibility-and-migration-test-matrix.md
