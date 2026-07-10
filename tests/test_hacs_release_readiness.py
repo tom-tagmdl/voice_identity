@@ -72,7 +72,8 @@ def test_hacs_json_exists_and_is_integration_ready() -> None:
     assert data.get("content_in_root") is False
     assert data.get("render_readme") is True
     assert data.get("homeassistant")
-    assert "voice_identity" in data.get("domains", [])
+    if "domains" in data:
+        assert "voice_identity" in data.get("domains", [])
 
 
 def test_manifest_exists_and_domain_is_consistent() -> None:

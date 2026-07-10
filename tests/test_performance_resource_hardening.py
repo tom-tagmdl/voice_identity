@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+from pathlib import Path
 import time
 import tracemalloc
 from dataclasses import dataclass
@@ -431,8 +432,14 @@ async def test_no_functional_regression_from_performance_hardening() -> None:
 
 
 def test_performance_documentation_alignment() -> None:
-    doc_path = "r:/HomesPlatformRepos/voice_identity/docs/architecture/voice_identity/vi-127-performance-and-resource-hardening.md"
-    with open(doc_path, "r", encoding="utf-8") as handle:
+    doc_path = (
+        Path(__file__).resolve().parents[1]
+        / "docs"
+        / "architecture"
+        / "voice_identity"
+        / "vi-127-performance-and-resource-hardening.md"
+    )
+    with doc_path.open("r", encoding="utf-8") as handle:
         content = handle.read().lower()
 
     for required in {
