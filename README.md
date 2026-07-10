@@ -1,3 +1,5 @@
+https://github.com/tom-tagmdl/voice_identity/blob/main/custom_components/voice_identity/brand/voice_identity.png
+
 # Voice Identity
 
 Voice Identity is a standalone Home Assistant custom integration that provides local-first, privacy-safe voice identity service surfaces for diagnostics, repairs, health, telemetry, advisory attribution, and identity context projection.
