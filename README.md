@@ -1,4 +1,5 @@
-https://github.com/tom-tagmdl/voice_identity/blob/main/custom_components/voice_identity/brand/voice_identity.png
+<img alt="voice_identity" src="https://github.com/user-attachments/assets/d8cc1489-5c5e-461c-810e-fc34b6f0077c" />
+
 
 # Voice Identity
 
