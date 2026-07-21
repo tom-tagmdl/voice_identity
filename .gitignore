@@ -7,6 +7,7 @@ htmlcov/
 .venv/
 .vscode/
 *.log
+tmp-closeout-*.json
 .DS_Store
 build/
 dist/
