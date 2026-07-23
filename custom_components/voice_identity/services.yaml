@@ -69,6 +69,38 @@ attribute_speaker:
       example: ecapa_v1
       selector:
         text:
+    conversation_id:
+      required: false
+      example: conv_20260723_001
+      selector:
+        text:
+    device_id:
+      required: false
+      example: assist_satellite_kitchen
+      selector:
+        text:
+    satellite_id:
+      required: false
+      example: sat_kitchen_01
+      selector:
+        text:
+    room_id:
+      required: false
+      example: kitchen
+      selector:
+        text:
+    turn_index:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 0
+          mode: box
+    pipeline_id:
+      required: false
+      example: assist_pipeline_primary
+      selector:
+        text:
 
 get_identity_context:
   name: Get identity context
@@ -95,5 +127,37 @@ get_identity_context:
     model_preference:
       required: false
       example: ecapa_v1
+      selector:
+        text:
+    conversation_id:
+      required: false
+      example: conv_20260723_001
+      selector:
+        text:
+    device_id:
+      required: false
+      example: assist_satellite_kitchen
+      selector:
+        text:
+    satellite_id:
+      required: false
+      example: sat_kitchen_01
+      selector:
+        text:
+    room_id:
+      required: false
+      example: kitchen
+      selector:
+        text:
+    turn_index:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 0
+          mode: box
+    pipeline_id:
+      required: false
+      example: assist_pipeline_primary
       selector:
         text:

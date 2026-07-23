@@ -181,6 +181,23 @@ Coordinator consumes Identity Context.
 
 Coordinator does not consume Voice Identity internals.
 
+### Decision 9: Voice Identity owns runtime attribution context lifecycle
+
+Accepted.
+
+Voice Identity owns:
+
+- short-lived runtime attribution records
+- attribution context storage and expiry
+- freshness and confidence semantics
+- speaker handoff-safe supersession behavior
+
+Concierge consumes safe attribution context through public contracts.
+
+`conversation_id` is a correlation key and not identity authority.
+
+Identity is "current speaker attribution", not "conversation owner".
+
 ## 6. Voiceprint Architecture Summary
 
 Voiceprint architecture includes:
@@ -263,6 +280,7 @@ Approved Identity Context model:
 8. Privacy Before Convenience
 9. Safe Metadata Only
 10. Capability Discovery Before Consumption
+11. Runtime Attribution Is Short-Lived By Default
 
 ## 10. Non-Goals
 
@@ -282,6 +300,7 @@ Concierge does not:
 - generate embeddings
 - perform attribution
 - own Voiceprint storage
+- own runtime attribution source-of-truth storage
 
 ## 11. Consequences
 

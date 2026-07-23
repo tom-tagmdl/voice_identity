@@ -12,9 +12,27 @@ Core fields include success, fingerprint reference metadata, model/schema metada
 
 Attribution is advisory evidence and includes status, confidence, confidence band, reason code, and safe hints.
 
+## Runtime Attribution Record
+
+Runtime attribution records are short-lived bridge records used for audio-time to
+text-time handoff.
+
+Required safe sections include:
+
+- binding correlation (`conversation_id`, `device_id`, `satellite_id`, optional `room_id`)
+- decision state and reason code
+- confidence band
+- freshness/validity metadata
+- integrity presence flags
+
+Voice Identity owns attribution context storage and expiry.
+
 ## Identity Context
 
-Identity Context is a canonical projection with state (`known`, `unknown`, `low_confidence`, `unavailable`) and safe metadata only.
+Identity Context is a canonical projection with state (`known`, `not_required`,
+`unknown`, `low_confidence`, `unavailable`) and safe metadata only.
+
+`conversation_id` is used for correlation and is not a speaker-identity authority.
 
 ## Diagnostics
 

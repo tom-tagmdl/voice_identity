@@ -117,6 +117,36 @@ class UnavailableModelExecutionBackend:
         )
 
 
+class DeterministicDevelopmentModelExecutionBackend:
+    """Deterministic backend used for local development validation workflows."""
+
+    @property
+    def metadata(self) -> ModelProviderMetadata:
+        return ModelProviderMetadata(
+            provider_name="deterministic_dev_backend",
+            provider_version="1",
+            supported_models=("ecapa_v1",),
+            supported_representation_formats=("encrypted_representation_v1",),
+            available=True,
+        )
+
+    async def execute(self, request: BackendExecutionRequest) -> BackendExecutionResult:
+        payload = (
+            f"dev:{request.model_id}:{request.generation_id}:{request.sample_count}:{request.prepared_input_count}"
+        ).encode("utf-8")
+        confidence = min(0.99, 0.7 + (max(0, request.sample_count) * 0.01))
+        return BackendExecutionResult(
+            encrypted_payload=payload,
+            payload_format_version=1,
+            encryption_scheme="dev_aes_gcm_v1",
+            key_reference="dev_key_ref_v1",
+            model_version="dev_v1",
+            schema_version=1,
+            representation_format="encrypted_representation_v1",
+            provider_confidence=confidence,
+        )
+
+
 class ModelExecutionProviderRuntime(ModelExecutionProvider):
     """Runtime model execution provider implementation for VI-113."""
 
@@ -138,9 +168,20 @@ class ModelExecutionProviderRuntime(ModelExecutionProvider):
         config_manager: VoiceIdentityConfigurationManager,
         backend: ModelExecutionBackend | None = None,
     ) -> ModelExecutionProviderRuntime:
+        if backend is None:
+            try:
+                config = config_manager.config
+            except VoiceIdentityConfigurationError:
+                config = None
+
+            if bool(getattr(getattr(config, "feature_flags", None), "enable_experimental_models", False)):
+                backend = DeterministicDevelopmentModelExecutionBackend()
+            else:
+                backend = UnavailableModelExecutionBackend()
+
         return cls(
             config_manager=config_manager,
-            backend=backend or UnavailableModelExecutionBackend(),
+            backend=backend,
         )
 
     async def generate(

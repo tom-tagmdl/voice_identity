@@ -43,3 +43,18 @@ Services are defined in custom_components/voice_identity/services.yaml and imple
 - Input: optional `entry_id`, `audio_ref`, `candidate_scope`, `model_preference`.
 - Output: success, reason_code, entry_id, identity_context payload.
 - Privacy notes: behavioral context only.
+
+## Runtime Attribution Context Store (Internal Contract)
+
+Voice Identity owns the runtime attribution context store used to bridge
+audio-time attribution and text-time conversation execution.
+
+Conceptual interface:
+
+- `upsert(record)`
+- `resolve_current_speaker(conversation_id, device_id, satellite_id, room_id, now)`
+- `invalidate_by_conversation(conversation_id)`
+- `invalidate_by_device_satellite(device_id, satellite_id)`
+- `sweep_expired(now)`
+
+This store is short-lived by design. It is not exposed as a raw payload surface.

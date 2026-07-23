@@ -31,6 +31,7 @@ from .quality_scoring import QualityScoringEngineProvider
 from .repair_registry import VoiceIdentityRepairRegistry
 from .repair_resolver import VoiceIdentityRepairResolver
 from .attribution_service import SpeakerAttributionFoundation
+from .attribution_context_store import InMemoryAttributionContextStore
 from .identity_context import IdentityContextGenerator
 from .sample_validation import SampleValidationPipelineProvider
 from .voiceprint_revision import VoiceprintRevisionManager
@@ -56,6 +57,7 @@ from .const import (
     DATA_DELETE_SUPERSEDE_VOICEPRINT_OPERATION,
     DATA_HEALTH_TELEMETRY_PROVIDER,
     DATA_ATTRIBUTION_FOUNDATION,
+    DATA_ATTRIBUTION_CONTEXT_STORE,
     DATA_IDENTITY_CONTEXT_GENERATOR,
     DATA_REPAIR_REGISTRY,
     DATA_REPAIR_RESOLVER,
@@ -171,6 +173,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     delete_supersede_health = await delete_supersede_voiceprint_operation.validate_health()
     health_telemetry_provider = VoiceIdentityHealthTelemetryProvider()
     attribution_foundation = SpeakerAttributionFoundation()
+    attribution_context_store = InMemoryAttributionContextStore()
     identity_context_generator = IdentityContextGenerator()
     repair_registry = VoiceIdentityRepairRegistry.with_defaults()
     repair_resolver = VoiceIdentityRepairResolver(registry=repair_registry)
@@ -315,6 +318,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_DELETE_SUPERSEDE_VOICEPRINT_OPERATION: delete_supersede_voiceprint_operation,
         DATA_HEALTH_TELEMETRY_PROVIDER: health_telemetry_provider,
         DATA_ATTRIBUTION_FOUNDATION: attribution_foundation,
+        DATA_ATTRIBUTION_CONTEXT_STORE: attribution_context_store,
         DATA_IDENTITY_CONTEXT_GENERATOR: identity_context_generator,
         DATA_REPAIR_REGISTRY: repair_registry,
         DATA_REPAIR_RESOLVER: repair_resolver,

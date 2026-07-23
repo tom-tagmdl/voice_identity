@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -7,7 +8,14 @@ import pytest
 from custom_components.voice_identity.attribution_models import ConfidenceBand, IdentityConfidenceLevel
 from custom_components.voice_identity.attribution_service import (
     SpeakerAttributionFoundation,
+    build_runtime_attribution_record,
     create_attribution_request,
+)
+from custom_components.voice_identity.attribution_models import (
+    AttributionDiagnosticSummary,
+    AttributionMethod,
+    AttributionResult,
+    AttributionStatus,
 )
 from custom_components.voice_identity.health_telemetry import VoiceIdentityHealthTelemetryProvider
 from custom_components.voice_identity.health_state import ComponentHealthReport, HealthSnapshot, HealthState
@@ -135,6 +143,52 @@ def _health_payload(*, attribution_readiness: str) -> dict[str, object]:
             "compatibility_readiness": "ready" if attribution_readiness == "ready" else "unavailable",
         },
     }
+
+
+def _diagnostic_summary() -> AttributionDiagnosticSummary:
+    return AttributionDiagnosticSummary(
+        diagnostic_available=True,
+        diagnostic_reason_code="diagnostics_ready",
+        repair_available=False,
+        health_status="healthy",
+        attribution_readiness="ready",
+        compatibility_readiness="ready",
+    )
+
+
+def _attribution_result(
+    *,
+    status: AttributionStatus,
+    reason_code: str,
+    confidence_band: ConfidenceBand,
+    confidence: float,
+    person_id: str | None,
+    profile_id: str | None,
+) -> AttributionResult:
+    return AttributionResult(
+        success=True,
+        status=status,
+        identity_confidence_level=(
+            IdentityConfidenceLevel.RECOGNIZED
+            if status is AttributionStatus.READY and person_id is not None
+            else IdentityConfidenceLevel.UNKNOWN
+        ),
+        attributed_person_id=person_id,
+        attributed_profile_id=profile_id,
+        attributed_artifact_id=None,
+        confidence=confidence,
+        confidence_band=confidence_band,
+        reason_code=reason_code,
+        attribution_method=AttributionMethod.VOICEPRINT_RECOGNITION,
+        is_confident=status is AttributionStatus.READY,
+        is_ambiguous=reason_code == "ambiguous_match",
+        is_abstained=status is not AttributionStatus.READY,
+        diagnostic_summary=_diagnostic_summary(),
+        repair_hint_code="review_component_health",
+        suggested_next_action_code="no_action_required",
+        health_status="healthy",
+        readiness_status="ready",
+    )
 
 
 @pytest.mark.asyncio
@@ -287,6 +341,104 @@ def test_attribution_request_validation_sanitizes_scope() -> None:
 
     assert request.audio_ref == "session_audio_001"
     assert request.candidate_scope == ("person_1", "person_2")
+    assert request.conversation_id is None
+    assert request.device_id is None
+    assert request.satellite_id is None
+    assert request.room_id is None
+    assert request.turn_index is None
+    assert request.pipeline_id is None
+
+
+def test_attribution_request_parses_correlation_fields_null_safely() -> None:
+    request = create_attribution_request(
+        {
+            "audio_ref": "sample_audio_001",
+            "conversation_id": "conv_1",
+            "device_id": "device_kitchen",
+            "satellite_id": "satellite_kitchen",
+            "room_id": "kitchen",
+            "turn_index": "4",
+            "pipeline_id": "assist_pipeline_primary",
+        }
+    )
+
+    assert request.conversation_id == "conv_1"
+    assert request.device_id == "device_kitchen"
+    assert request.satellite_id == "satellite_kitchen"
+    assert request.room_id == "kitchen"
+    assert request.turn_index == 4
+    assert request.pipeline_id == "assist_pipeline_primary"
+    assert request.correlation_payload() == {
+        "conversation_id": "conv_1",
+        "device_id": "device_kitchen",
+        "satellite_id": "satellite_kitchen",
+        "room_id": "kitchen",
+        "turn_index": 4,
+        "pipeline_id": "assist_pipeline_primary",
+    }
+
+
+def test_attribution_request_invalid_turn_index_falls_back_to_none() -> None:
+    request = create_attribution_request(
+        {
+            "audio_ref": "sample_audio_001",
+            "turn_index": "not-an-int",
+        }
+    )
+
+    assert request.turn_index is None
+
+
+@pytest.mark.parametrize(
+    ("status", "reason_code", "band", "expected_state", "expected_ttl"),
+    [
+        (AttributionStatus.READY, "attribution_ready", ConfidenceBand.HIGH, "known", 30),
+        (AttributionStatus.ABSTAINED, "ambiguous_match", ConfidenceBand.AMBIGUOUS, "ambiguous", 5),
+        (AttributionStatus.ABSTAINED, "identity_unknown", ConfidenceBand.UNKNOWN, "unknown", 0),
+        (AttributionStatus.UNAVAILABLE, "attribution_unavailable", ConfidenceBand.UNAVAILABLE, "unavailable", 0),
+        (AttributionStatus.ABSTAINED, "identity_not_required", ConfidenceBand.UNKNOWN, "not_required", 10),
+    ],
+)
+def test_runtime_record_builder_covers_required_states_and_ttl(
+    status: AttributionStatus,
+    reason_code: str,
+    band: ConfidenceBand,
+    expected_state: str,
+    expected_ttl: int,
+) -> None:
+    request = create_attribution_request(
+        {
+            "conversation_id": "conv_1",
+            "device_id": "device_kitchen",
+            "satellite_id": "satellite_kitchen",
+            "room_id": "kitchen",
+            "turn_index": 1,
+            "pipeline_id": "assist_pipeline_primary",
+        }
+    )
+    attribution = _attribution_result(
+        status=status,
+        reason_code=reason_code,
+        confidence_band=band,
+        confidence=0.92 if expected_state == "known" else 0.0,
+        person_id="person_1" if expected_state == "known" else None,
+        profile_id="vp_1" if expected_state == "known" else None,
+    )
+
+    record = build_runtime_attribution_record(request=request, attribution=attribution)
+
+    issued = datetime.fromisoformat(record.issued_at_utc)
+    expires = datetime.fromisoformat(record.expires_at_utc)
+    ttl_seconds = int((expires - issued).total_seconds())
+
+    assert record.decision.state == expected_state
+    assert ttl_seconds == expected_ttl
+    assert record.binding.conversation_id == "conv_1"
+    assert record.binding.device_id == "device_kitchen"
+    assert record.binding.satellite_id == "satellite_kitchen"
+    assert record.binding.room_id == "kitchen"
+    assert record.binding.turn_index == 1
+    assert record.binding.pipeline_id == "assist_pipeline_primary"
 
 
 @pytest.mark.asyncio

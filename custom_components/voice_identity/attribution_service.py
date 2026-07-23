@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any
+from uuid import uuid4
 
 from .attribution_models import (
     AttributionDiagnosticSummary,
@@ -26,8 +28,19 @@ from .const import (
     DATA_REPAIR_RESOLVER,
     DATA_VOICEPRINT_REGISTRY,
 )
+from .contracts import (
+    AttributionBinding,
+    AttributionConfidence,
+    AttributionDecision,
+    AttributionDiagnostics,
+    AttributionFreshness,
+    AttributionIntegrity,
+    AttributionSubject,
+    RuntimeAttributionRecord,
+    compute_default_attribution_ttl_seconds,
+)
 from .diagnostics_provider import VoiceIdentityDiagnosticsProvider, build_runtime_context
-from .diagnostics_sanitizer import safe_token
+from .diagnostics_sanitizer import normalize_reason_code, safe_token
 from .health_telemetry import VoiceIdentityHealthTelemetryProvider, build_health_telemetry_context
 from .repair_resolver import VoiceIdentityRepairResolver
 from .voiceprint_registry import VoiceprintRegistry, VoiceprintRegistryValidationError
@@ -41,6 +54,27 @@ class AttributionRequest:
     audio_bytes_size: int
     candidate_scope: tuple[str, ...]
     model_preference: str
+    conversation_id: str | None
+    device_id: str | None
+    satellite_id: str | None
+    room_id: str | None
+    turn_index: int | None
+    pipeline_id: str | None
+
+    def correlation_payload(self) -> dict[str, str | int | None]:
+        """Return safe correlation metadata for runtime propagation and diagnostics."""
+        return {
+            "conversation_id": self.conversation_id,
+            "device_id": self.device_id,
+            "satellite_id": self.satellite_id,
+            "room_id": self.room_id,
+            "turn_index": self.turn_index,
+            "pipeline_id": self.pipeline_id,
+        }
+
+    def has_audio_evidence(self) -> bool:
+        """Return whether this request includes audio-time attribution evidence."""
+        return bool(self.audio_ref or self.audio_bytes_size > 0)
 
 
 class SpeakerAttributionFoundation:
@@ -427,12 +461,134 @@ def create_attribution_request(data: Mapping[str, object]) -> AttributionRequest
         candidate_scope = ()
 
     model_preference = safe_token(str(data.get("model_preference", "") or ""), "")
+
+    conversation_id = _optional_text_field(data, "conversation_id")
+    device_id = _optional_text_field(data, "device_id")
+    satellite_id = _optional_text_field(data, "satellite_id")
+    room_id = _optional_text_field(data, "room_id")
+    pipeline_id = _optional_text_field(data, "pipeline_id")
+    turn_index = _optional_int_field(data, "turn_index")
+
     return AttributionRequest(
         audio_ref=audio_ref,
         audio_bytes_size=audio_bytes_size,
         candidate_scope=candidate_scope,
         model_preference=model_preference,
+        conversation_id=conversation_id,
+        device_id=device_id,
+        satellite_id=satellite_id,
+        room_id=room_id,
+        turn_index=turn_index,
+        pipeline_id=pipeline_id,
     )
+
+
+def build_runtime_attribution_record(
+    *,
+    request: AttributionRequest,
+    attribution: AttributionResult,
+    now: datetime | None = None,
+) -> RuntimeAttributionRecord:
+    """Build one canonical runtime attribution record for lifecycle persistence."""
+    issued_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+
+    decision_state = _decision_state_from_attribution(attribution)
+    confidence_band = attribution.confidence_band.value if attribution.confidence_band else "none"
+    ttl_seconds = compute_default_attribution_ttl_seconds(
+        state=decision_state,
+        confidence_band=confidence_band,
+    )
+    expires_at = issued_at + timedelta(seconds=max(0, ttl_seconds))
+
+    freshness_class = "fresh" if ttl_seconds > 0 else "not_applicable"
+    reason_code = normalize_reason_code(attribution.reason_code)
+
+    return RuntimeAttributionRecord(
+        contract_version="1.0.0",
+        attribution_id=f"attr_{uuid4().hex}",
+        issued_at_utc=issued_at.isoformat(),
+        expires_at_utc=expires_at.isoformat(),
+        producer="voice_identity",
+        binding=AttributionBinding(
+            conversation_id=request.conversation_id,
+            device_id=request.device_id,
+            satellite_id=request.satellite_id,
+            pipeline_id=request.pipeline_id,
+            turn_index=request.turn_index,
+            room_id=request.room_id,
+        ),
+        subject=AttributionSubject(
+            person_id=safe_token(attribution.attributed_person_id, "") or None,
+            display_name=None,
+            profile_id=safe_token(attribution.attributed_profile_id, "") or None,
+        ),
+        confidence=AttributionConfidence(
+            score=float(attribution.confidence) if attribution.confidence is not None else None,
+            band=confidence_band,
+        ),
+        decision=AttributionDecision(
+            state=decision_state,
+            reason_code=reason_code,
+            recommended_action=_recommended_action_for_state(decision_state),
+        ),
+        freshness=AttributionFreshness(
+            attribution_age_ms=0,
+            valid_until_utc=expires_at.isoformat(),
+            freshness_class=freshness_class,
+        ),
+        diagnostics=AttributionDiagnostics(
+            model_version=request.model_preference or None,
+            attribution_latency_ms=None,
+            evidence_flags=(),
+        ),
+        integrity=AttributionIntegrity(signature_present=False, nonce_present=False),
+    ).normalized()
+
+
+def _decision_state_from_attribution(attribution: AttributionResult) -> str:
+    reason_code = normalize_reason_code(attribution.reason_code)
+    if reason_code == "identity_not_required":
+        return "not_required"
+    if attribution.status is AttributionStatus.UNAVAILABLE:
+        return "unavailable"
+    if attribution.status is AttributionStatus.READY:
+        return "known"
+    if reason_code in {"ambiguous_match", "identity_ambiguous_match"}:
+        return "ambiguous"
+    if reason_code in {"identity_unknown", "no_active_voiceprints", "low_confidence"}:
+        return "unknown"
+    return "unknown"
+
+
+def _recommended_action_for_state(state: str) -> str:
+    normalized = str(state or "").strip().lower()
+    if normalized == "known":
+        return "allow"
+    if normalized == "not_required":
+        return "continue_without_identity"
+    if normalized == "ambiguous":
+        return "challenge"
+    if normalized == "unknown":
+        return "constrain"
+    return "deny"
+
+
+def _optional_text_field(data: Mapping[str, object], key: str) -> str | None:
+    value = safe_token(str(data.get(key, "") or ""), "")
+    return value or None
+
+
+def _optional_int_field(data: Mapping[str, object], key: str) -> int | None:
+    value = data.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None
 
 
 def _configured_threshold(runtime: Mapping[str, Any]) -> float:

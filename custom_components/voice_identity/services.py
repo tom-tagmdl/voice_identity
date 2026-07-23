@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import logging
 
 import voluptuous as vol
@@ -9,8 +10,23 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall, SupportsResponse
 
-from .attribution_service import AttributionRequest, SpeakerAttributionFoundation, create_attribution_request
+from .attribution_context_store import InMemoryAttributionContextStore
+from .attribution_models import (
+    AttributionDiagnosticSummary,
+    AttributionMethod,
+    AttributionResult,
+    AttributionStatus,
+    ConfidenceBand,
+    IdentityConfidenceLevel,
+)
+from .attribution_service import (
+    AttributionRequest,
+    SpeakerAttributionFoundation,
+    build_runtime_attribution_record,
+    create_attribution_request,
+)
 from .const import DATA_ATTRIBUTION_FOUNDATION
+from .const import DATA_ATTRIBUTION_CONTEXT_STORE
 from .const import DATA_IDENTITY_CONTEXT_GENERATOR
 from .const import DOMAIN
 from .const import DATA_HEALTH_TELEMETRY_PROVIDER
@@ -68,6 +84,12 @@ SERVICE_ATTRIBUTE_SPEAKER_SCHEMA = vol.Schema(
         vol.Optional("audio_ref"): str,
         vol.Optional("candidate_scope"): [str],
         vol.Optional("model_preference"): str,
+        vol.Optional("conversation_id"): str,
+        vol.Optional("device_id"): str,
+        vol.Optional("satellite_id"): str,
+        vol.Optional("room_id"): str,
+        vol.Optional("turn_index"): vol.Coerce(int),
+        vol.Optional("pipeline_id"): str,
     }
 )
 
@@ -77,6 +99,12 @@ SERVICE_GET_IDENTITY_CONTEXT_SCHEMA = vol.Schema(
         vol.Optional("audio_ref"): str,
         vol.Optional("candidate_scope"): [str],
         vol.Optional("model_preference"): str,
+        vol.Optional("conversation_id"): str,
+        vol.Optional("device_id"): str,
+        vol.Optional("satellite_id"): str,
+        vol.Optional("room_id"): str,
+        vol.Optional("turn_index"): vol.Coerce(int),
+        vol.Optional("pipeline_id"): str,
     }
 )
 
@@ -273,6 +301,8 @@ async def async_register_services(hass: HomeAssistant) -> None:
             }
 
     async def _handle_attribute_speaker(call: ServiceCall) -> dict[str, object]:
+        request: AttributionRequest = create_attribution_request(call.data)
+        correlation = request.correlation_payload()
         requested_entry_id = str(call.data.get("entry_id", "") or "").strip()
         runtime_entry_id, runtime = _resolve_runtime(hass, requested_entry_id)
         if runtime is None or runtime_entry_id is None:
@@ -280,6 +310,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 "success": False,
                 "reason_code": "runtime_unavailable",
                 "entry_id": requested_entry_id or "unknown_entry",
+                "correlation": correlation,
                 "attribution": {
                     "success": True,
                     "status": "attribution_unavailable",
@@ -306,7 +337,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 },
             }
 
-        request: AttributionRequest = create_attribution_request(call.data)
         foundation_obj = runtime.get(DATA_ATTRIBUTION_FOUNDATION)
         foundation = (
             foundation_obj
@@ -321,45 +351,41 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 request=request,
                 services_registered=bool(hass.data.get(DOMAIN, {}).get(_SERVICES_REGISTERED_KEY, False)),
             )
+            persisted_record = _persist_runtime_record(
+                runtime=runtime,
+                request=request,
+                attribution=result,
+            )
             return {
                 "success": True,
                 "reason_code": "ready",
                 "entry_id": runtime_entry_id,
+                "correlation": correlation,
                 "attribution": result.to_dict(),
+                "runtime_attribution": _project_runtime_attribution(persisted_record),
             }
         except Exception:
             _LOGGER.exception("voice_identity.attribute_speaker failed closed")
+            fallback = _unavailable_attribution(reason_code="internal_error")
+            persisted_record = _persist_runtime_record(
+                runtime=runtime,
+                request=request,
+                attribution=fallback,
+            )
             return {
                 "success": False,
                 "reason_code": "attribution_unavailable",
                 "entry_id": runtime_entry_id,
+                "correlation": correlation,
                 "attribution": {
-                    "success": True,
-                    "status": "attribution_unavailable",
-                    "identity_confidence_level": "unknown",
-                    "confidence": 0.0,
-                    "confidence_band": "unavailable",
-                    "reason_code": "internal_error",
-                    "attribution_method": "none",
-                    "is_confident": False,
-                    "is_ambiguous": False,
-                    "is_abstained": True,
-                    "diagnostic_summary": {
-                        "diagnostic_available": False,
-                        "diagnostic_reason_code": "diagnostics_unavailable",
-                        "repair_available": False,
-                        "health_status": "unavailable",
-                        "attribution_readiness": "unavailable",
-                        "compatibility_readiness": "unavailable",
-                    },
-                    "repair_hint_code": "review_component_health",
-                    "suggested_next_action_code": "reload_voice_identity",
-                    "health_status": "unavailable",
-                    "readiness_status": "unavailable",
+                    **fallback.to_dict(),
                 },
+                "runtime_attribution": _project_runtime_attribution(persisted_record),
             }
 
     async def _handle_get_identity_context(call: ServiceCall) -> dict[str, object]:
+        request: AttributionRequest = create_attribution_request(call.data)
+        correlation = request.correlation_payload()
         requested_entry_id = str(call.data.get("entry_id", "") or "").strip()
         runtime_entry_id, runtime = _resolve_runtime(hass, requested_entry_id)
         if runtime is None or runtime_entry_id is None:
@@ -367,6 +393,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 "success": False,
                 "reason_code": "runtime_unavailable",
                 "entry_id": requested_entry_id or "unknown_entry",
+                "correlation": correlation,
                 "identity_context": {
                     "state": "unavailable",
                     "reason_code": "attribution_unavailable",
@@ -374,7 +401,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 },
             }
 
-        request: AttributionRequest = create_attribution_request(call.data)
         foundation_obj = runtime.get(DATA_ATTRIBUTION_FOUNDATION)
         foundation = (
             foundation_obj
@@ -388,26 +414,92 @@ async def async_register_services(hass: HomeAssistant) -> None:
             else IdentityContextGenerator()
         )
 
+        store = _resolve_context_store(runtime)
+        now = _utcnow()
+        store.sweep_expired(now=now)
+
+        resolved_record = store.resolve_current_speaker(
+            conversation_id=request.conversation_id,
+            device_id=request.device_id,
+            satellite_id=request.satellite_id,
+            room_id=request.room_id,
+            now=now,
+        )
+        if resolved_record is not None:
+            return {
+                "success": True,
+                "reason_code": "ready",
+                "entry_id": runtime_entry_id,
+                "correlation": correlation,
+                "runtime_attribution": _project_runtime_attribution(resolved_record),
+                "identity_context": _identity_context_from_record(record=resolved_record),
+            }
+
         try:
+            if not request.has_audio_evidence():
+                return {
+                    "success": True,
+                    "reason_code": "ready",
+                    "entry_id": runtime_entry_id,
+                    "correlation": correlation,
+                    "identity_context": {
+                        "state": "unknown",
+                        "person_id": None,
+                        "voice_profile_id": None,
+                        "confidence": None,
+                        "confidence_band": None,
+                        "reason_code": "identity_context_missing",
+                        "source": "voice_identity",
+                    },
+                }
+
             attribution = await foundation.attribute(
                 entry_id=runtime_entry_id,
                 runtime=runtime,
                 request=request,
                 services_registered=bool(hass.data.get(DOMAIN, {}).get(_SERVICES_REGISTERED_KEY, False)),
             )
-            context = generator.generate(attribution=attribution)
+            persisted_record = _persist_runtime_record(
+                runtime=runtime,
+                request=request,
+                attribution=attribution,
+            )
+            resolved_after = store.resolve_current_speaker(
+                conversation_id=request.conversation_id,
+                device_id=request.device_id,
+                satellite_id=request.satellite_id,
+                room_id=request.room_id,
+                now=_utcnow(),
+            )
+            context_payload = (
+                _identity_context_from_record(record=resolved_after)
+                if resolved_after is not None
+                else generator.to_dict(context=generator.generate(attribution=attribution))
+            )
             return {
                 "success": True,
                 "reason_code": "ready",
                 "entry_id": runtime_entry_id,
-                "identity_context": generator.to_dict(context=context),
+                "correlation": correlation,
+                "runtime_attribution": _project_runtime_attribution(
+                    resolved_after if resolved_after is not None else persisted_record
+                ),
+                "identity_context": context_payload,
             }
         except Exception:
             _LOGGER.exception("voice_identity.get_identity_context failed closed")
+            fallback = _unavailable_attribution(reason_code="internal_error")
+            persisted_record = _persist_runtime_record(
+                runtime=runtime,
+                request=request,
+                attribution=fallback,
+            )
             return {
                 "success": False,
                 "reason_code": "identity_context_unavailable",
                 "entry_id": runtime_entry_id,
+                "correlation": correlation,
+                "runtime_attribution": _project_runtime_attribution(persisted_record),
                 "identity_context": {
                     "state": "unavailable",
                     "reason_code": "internal_error",
@@ -475,6 +567,152 @@ async def async_unregister_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_ATTRIBUTE_SPEAKER)
     hass.services.async_remove(DOMAIN, SERVICE_GET_IDENTITY_CONTEXT)
     domain_bucket[_SERVICES_REGISTERED_KEY] = False
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _resolve_context_store(runtime: dict[str, object]) -> InMemoryAttributionContextStore:
+    store_obj = runtime.get(DATA_ATTRIBUTION_CONTEXT_STORE)
+    if isinstance(store_obj, InMemoryAttributionContextStore):
+        return store_obj
+
+    # Preserve current runtime behavior even when older runtime fixtures omit the store.
+    store = InMemoryAttributionContextStore()
+    runtime[DATA_ATTRIBUTION_CONTEXT_STORE] = store
+    return store
+
+
+def _project_runtime_attribution(record) -> dict[str, object]:
+    return {
+        "attribution_id": record.attribution_id,
+        "issued_at_utc": record.issued_at_utc,
+        "expires_at_utc": record.expires_at_utc,
+        "state": record.decision.state,
+        "reason_code": record.decision.reason_code,
+        "recommended_action": record.decision.recommended_action,
+        "confidence_band": record.confidence.band,
+        "freshness_class": record.freshness.freshness_class,
+        "attribution_age_ms": record.freshness.attribution_age_ms,
+        "valid_until_utc": record.freshness.valid_until_utc,
+        "correlation": {
+            "conversation_id": record.binding.conversation_id,
+            "device_id": record.binding.device_id,
+            "satellite_id": record.binding.satellite_id,
+            "room_id": record.binding.room_id,
+            "turn_index": record.binding.turn_index,
+            "pipeline_id": record.binding.pipeline_id,
+        },
+    }
+
+
+def _identity_context_from_record(
+    *,
+    record,
+) -> dict[str, object]:
+    state_map = {
+        "known": "known",
+        "ambiguous": "low_confidence",
+        "unknown": "unknown",
+        "unavailable": "unavailable",
+        "not_required": "not_required",
+    }
+    state = state_map.get(record.decision.state, "unknown")
+
+    context = {
+        "state": state,
+        "person_id": record.subject.person_id if state == "known" else None,
+        "voice_profile_id": record.subject.profile_id if state == "known" else None,
+        "confidence": record.confidence.score if state in {"known", "low_confidence"} else None,
+        "confidence_band": record.confidence.band if state in {"known", "low_confidence"} else None,
+        "reason_code": record.decision.reason_code,
+        "source": "voice_identity",
+        "generated_at": _utcnow().isoformat(),
+    }
+    return context
+
+
+def _unavailable_attribution(*, reason_code: str) -> AttributionResult:
+    return AttributionResult(
+        success=True,
+        status=AttributionStatus.UNAVAILABLE,
+        identity_confidence_level=IdentityConfidenceLevel.UNKNOWN,
+        attributed_person_id=None,
+        attributed_profile_id=None,
+        attributed_artifact_id=None,
+        confidence=0.0,
+        confidence_band=ConfidenceBand.UNAVAILABLE,
+        reason_code=reason_code,
+        attribution_method=AttributionMethod.NONE,
+        is_confident=False,
+        is_ambiguous=False,
+        is_abstained=True,
+        diagnostic_summary=AttributionDiagnosticSummary(
+            diagnostic_available=False,
+            diagnostic_reason_code="diagnostics_unavailable",
+            repair_available=False,
+            health_status="unavailable",
+            attribution_readiness="unavailable",
+            compatibility_readiness="unavailable",
+        ),
+        repair_hint_code="review_component_health",
+        suggested_next_action_code="reload_voice_identity",
+        health_status="unavailable",
+        readiness_status="unavailable",
+    )
+
+
+def _persist_runtime_record(
+    *,
+    runtime: dict[str, object],
+    request: AttributionRequest,
+    attribution: AttributionResult,
+):
+    store = _resolve_context_store(runtime)
+    now = _utcnow()
+    store.sweep_expired(now=now)
+
+    record = build_runtime_attribution_record(
+        request=request,
+        attribution=attribution,
+        now=now,
+    )
+
+    existing = store.resolve_current_speaker(
+        conversation_id=request.conversation_id,
+        device_id=request.device_id,
+        satellite_id=request.satellite_id,
+        room_id=request.room_id,
+        now=now,
+    )
+
+    # Supersession and invalid-context handling remain in Voice Identity lifecycle ownership.
+    if record.decision.state in {"unknown", "unavailable"}:
+        if request.conversation_id:
+            store.invalidate_by_conversation(request.conversation_id)
+        elif request.device_id or request.satellite_id:
+            store.invalidate_by_device_satellite(
+                device_id=request.device_id,
+                satellite_id=request.satellite_id,
+            )
+    elif (
+        existing is not None
+        and existing.subject.person_id
+        and record.subject.person_id
+        and existing.subject.person_id != record.subject.person_id
+    ):
+        if request.conversation_id:
+            store.invalidate_by_conversation(request.conversation_id)
+        elif request.device_id or request.satellite_id:
+            store.invalidate_by_device_satellite(
+                device_id=request.device_id,
+                satellite_id=request.satellite_id,
+            )
+
+    persisted = store.upsert(record)
+    store.sweep_expired(now=now)
+    return store.with_freshness(persisted, age_ms=0, freshness_class=persisted.freshness.freshness_class)
 
 
 def _resolve_runtime(

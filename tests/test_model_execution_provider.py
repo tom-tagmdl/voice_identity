@@ -209,6 +209,32 @@ async def test_provider_readiness_health_ready_with_backend() -> None:
 
 
 @pytest.mark.asyncio
+async def test_provider_uses_deterministic_backend_when_experimental_models_enabled() -> None:
+    manager = _config_manager()
+    manager.load_from_entry(
+        FakeConfigEntry(
+            data={
+                "generation": {
+                    "model_preference": "ecapa_v1",
+                    "min_sample_count": 2,
+                    "max_sample_count": 12,
+                    "quality_threshold": 0.75,
+                    "supported_models": ["ecapa_v1"],
+                },
+                "feature_flags": {
+                    "enable_experimental_models": True,
+                },
+            }
+        )
+    )
+
+    provider = ModelExecutionProviderRuntime.create(config_manager=manager)
+    health = await provider.validate_health()
+    assert health.state is HealthState.HEALTHY
+    assert health.reason_codes == ("model_execution_ready",)
+
+
+@pytest.mark.asyncio
 async def test_successful_model_execution_contract_with_test_backend() -> None:
     provider = ModelExecutionProviderRuntime.create(
         config_manager=_config_manager(),

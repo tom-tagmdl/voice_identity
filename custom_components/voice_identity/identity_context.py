@@ -17,6 +17,7 @@ class IdentityContextState(StrEnum):
     """Stable identity context state surface."""
 
     KNOWN = "known"
+    NOT_REQUIRED = "not_required"
     UNKNOWN = "unknown"
     LOW_CONFIDENCE = "low_confidence"
     UNAVAILABLE = "unavailable"
@@ -73,6 +74,8 @@ class IdentityContextGenerator:
             return IdentityContextState.UNKNOWN
 
         if attribution.status is AttributionStatus.ABSTAINED:
+            if reason_code == "identity_not_required":
+                return IdentityContextState.NOT_REQUIRED
             if reason_code in {"low_confidence", "ambiguous_match"}:
                 return IdentityContextState.LOW_CONFIDENCE
             if attribution.confidence_band in {ConfidenceBand.LOW, ConfidenceBand.AMBIGUOUS}:

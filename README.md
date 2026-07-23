@@ -41,6 +41,7 @@ Voice Identity provides a dedicated identity service boundary so consumers can u
 - Capability discovery and readiness surfaces are first-class runtime contracts.
 - Attribution is advisory evidence, not identity truth.
 - Identity Context is behavioral context, not authentication or authorization.
+- Voice Identity owns short-lived runtime attribution context storage and expiry.
 
 ## Privacy Guarantees
 
@@ -105,7 +106,8 @@ After installation or update, restart Home Assistant before validating service a
 - Repairs are recommendation-only and do not execute actions.
 - Health and telemetry expose readiness, including `attribution_readiness` and `compatibility_readiness`.
 - Attribution remains advisory and fail-closed.
-- Identity context maps to canonical states: `known`, `unknown`, `low_confidence`, `unavailable`.
+- Identity context maps to canonical states: `known`, `not_required`, `unknown`, `low_confidence`, `unavailable`.
+- Correlation keys (`conversation_id`, `device_id`, `satellite_id`) are lookup context and not identity authority.
 
 ## Operational Readiness Status
 

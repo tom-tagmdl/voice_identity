@@ -25,6 +25,7 @@ Voice Identity is a standalone Home Assistant custom integration with local-firs
 - [Repairs](repairs.md)
 - [Health and Telemetry](health-telemetry.md)
 - [Attribution](attribution.md)
+- [Runtime Requirements](runtime-requirements.md)
 - [Identity Context](identity-context.md)
 - [Privacy and Security](privacy-security.md)
 - [HACS Release](hacs-release.md)

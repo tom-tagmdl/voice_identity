@@ -28,6 +28,7 @@ Concierge owns room context, people configuration, permission policy, coordinato
 - Manage fingerprint artifact references and schema/model metadata.
 - Produce runtime speaker attribution decisions and confidence outputs.
 - Return safe reason codes for no-match and low-confidence outcomes.
+- Own short-lived runtime attribution context records and expiry lifecycle.
 
 ## 7. Non-Responsibilities
 
@@ -66,6 +67,18 @@ Concierge coordinator consumes only safe identity resolution outputs from Voice 
 - voice profile identifier
 - confidence
 - reason code
+
+Coordinator/Concierge correlation keys such as `conversation_id`, `device_id`,
+and `satellite_id` are lookup keys only and are not identity authority.
+
+Runtime attribution context reuse must remain short-lived by default:
+
+- high confidence known: 30 seconds
+- medium confidence known: 15 seconds
+- low confidence or ambiguous: 5 to 10 seconds
+- unknown/unavailable: no reuse
+
+Absolute cap: 60 seconds unless superseded by accepted ADR authority.
 
 ## 12. Consequences
 

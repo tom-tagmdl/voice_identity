@@ -127,3 +127,19 @@ def test_identity_context_maps_unavailable() -> None:
 
     assert payload["state"] == "unavailable"
     assert payload["reason_code"] == "attribution_unavailable"
+
+
+def test_identity_context_maps_not_required() -> None:
+    generator = IdentityContextGenerator()
+    attribution = _result(
+        status=AttributionStatus.ABSTAINED,
+        identity_confidence_level=IdentityConfidenceLevel.UNKNOWN,
+        reason_code="identity_not_required",
+        confidence_band=ConfidenceBand.UNKNOWN,
+    )
+
+    payload = generator.to_dict(context=generator.generate(attribution=attribution))
+
+    assert payload["state"] == "not_required"
+    assert payload["reason_code"] == "identity_not_required"
+    assert payload["person_id"] is None

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 
 from custom_components.voice_identity.const import (
+    DATA_ATTRIBUTION_CONTEXT_STORE,
     DATA_ATTRIBUTION_FOUNDATION,
     DATA_CAPABILITY_REGISTRY,
     DATA_CONFIG_MANAGER,
@@ -26,7 +28,20 @@ from custom_components.voice_identity.const import (
 from custom_components.voice_identity.repair_registry import VoiceIdentityRepairRegistry
 from custom_components.voice_identity.repair_resolver import VoiceIdentityRepairResolver
 from custom_components.voice_identity.health_telemetry import VoiceIdentityHealthTelemetryProvider
-from custom_components.voice_identity.attribution_service import SpeakerAttributionFoundation
+from custom_components.voice_identity.attribution_context_store import InMemoryAttributionContextStore
+from custom_components.voice_identity.attribution_models import (
+    AttributionDiagnosticSummary,
+    AttributionMethod,
+    AttributionResult,
+    AttributionStatus,
+    ConfidenceBand,
+    IdentityConfidenceLevel,
+)
+from custom_components.voice_identity.attribution_service import (
+    SpeakerAttributionFoundation,
+    build_runtime_attribution_record,
+    create_attribution_request,
+)
 from custom_components.voice_identity.identity_context import IdentityContextGenerator
 from custom_components.voice_identity.diagnostics import async_get_config_entry_diagnostics
 from custom_components.voice_identity.health_state import ComponentHealthReport, HealthSnapshot, HealthState
@@ -157,6 +172,7 @@ def _runtime() -> dict[str, object]:
     repair_resolver = VoiceIdentityRepairResolver(registry=repair_registry)
     health_telemetry_provider = VoiceIdentityHealthTelemetryProvider()
     attribution_foundation = SpeakerAttributionFoundation()
+    attribution_context_store = InMemoryAttributionContextStore()
     identity_context_generator = IdentityContextGenerator()
 
     return {
@@ -173,10 +189,18 @@ def _runtime() -> dict[str, object]:
         DATA_GET_CAPABILITIES_OPERATION: object(),
         DATA_HEALTH_TELEMETRY_PROVIDER: health_telemetry_provider,
         DATA_ATTRIBUTION_FOUNDATION: attribution_foundation,
+        DATA_ATTRIBUTION_CONTEXT_STORE: attribution_context_store,
         DATA_IDENTITY_CONTEXT_GENERATOR: identity_context_generator,
         DATA_REPAIR_REGISTRY: repair_registry,
         DATA_REPAIR_RESOLVER: repair_resolver,
     }
+
+
+class _FailingAttributionFoundation:
+    async def attribute(self, *args, **kwargs):
+        _ = args
+        _ = kwargs
+        raise AssertionError("attribute should not be called when store resolution succeeds")
 
 
 @pytest.mark.asyncio
@@ -361,7 +385,130 @@ async def test_attribute_speaker_service_returns_advisory_projection() -> None:
         "attribution_abstained",
         "attribution_unavailable",
     }
+    assert response["correlation"] == {
+        "conversation_id": None,
+        "device_id": None,
+        "satellite_id": None,
+        "room_id": None,
+        "turn_index": None,
+        "pipeline_id": None,
+    }
     assert "diagnostic_summary" in response["attribution"]
+
+
+@pytest.mark.asyncio
+async def test_attribute_speaker_service_propagates_correlation_fields() -> None:
+    hass = _FakeHass()
+    hass.data[DOMAIN] = {"entry_1": _runtime()}
+
+    await async_register_services(hass)
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_ATTRIBUTE_SPEAKER,
+        {
+            "audio_ref": "sample_audio_001",
+            "conversation_id": "conv_1",
+            "device_id": "device_kitchen",
+            "satellite_id": "satellite_kitchen",
+            "room_id": "kitchen",
+            "turn_index": 7,
+            "pipeline_id": "assist_pipeline_primary",
+        },
+        return_response=True,
+    )
+
+    assert response["correlation"] == {
+        "conversation_id": "conv_1",
+        "device_id": "device_kitchen",
+        "satellite_id": "satellite_kitchen",
+        "room_id": "kitchen",
+        "turn_index": 7,
+        "pipeline_id": "assist_pipeline_primary",
+    }
+    runtime = hass.data[DOMAIN]["entry_1"]
+    store = runtime[DATA_ATTRIBUTION_CONTEXT_STORE]
+    assert isinstance(store, InMemoryAttributionContextStore)
+    assert response["runtime_attribution"]["state"] in {"unknown", "unavailable", "known", "ambiguous", "not_required"}
+    if response["runtime_attribution"]["state"] in {"unknown", "unavailable"}:
+        assert len(store._records) == 0
+    else:
+        assert len(store._records) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_identity_context_prefers_store_resolution_over_re_attribution() -> None:
+    hass = _FakeHass()
+    runtime = _runtime()
+    store = runtime[DATA_ATTRIBUTION_CONTEXT_STORE]
+    assert isinstance(store, InMemoryAttributionContextStore)
+
+    request = create_attribution_request(
+        {
+            "conversation_id": "conv_1",
+            "device_id": "device_kitchen",
+            "satellite_id": "satellite_kitchen",
+            "room_id": "kitchen",
+            "turn_index": 1,
+            "pipeline_id": "assist_pipeline_primary",
+        }
+    )
+    attribution = AttributionResult(
+        success=True,
+        status=AttributionStatus.READY,
+        identity_confidence_level=IdentityConfidenceLevel.RECOGNIZED,
+        attributed_person_id="person_123",
+        attributed_profile_id="vp_123",
+        attributed_artifact_id="artifact_123",
+        confidence=0.92,
+        confidence_band=ConfidenceBand.HIGH,
+        reason_code="identity_known_high_confidence",
+        attribution_method=AttributionMethod.VOICEPRINT_RECOGNITION,
+        is_confident=True,
+        is_ambiguous=False,
+        is_abstained=False,
+        diagnostic_summary=AttributionDiagnosticSummary(
+            diagnostic_available=True,
+            diagnostic_reason_code="diagnostics_ready",
+            repair_available=False,
+            health_status="healthy",
+            attribution_readiness="ready",
+            compatibility_readiness="ready",
+        ),
+        repair_hint_code="review_component_health",
+        suggested_next_action_code="no_action_required",
+        health_status="healthy",
+        readiness_status="ready",
+    )
+    store.upsert(
+        build_runtime_attribution_record(
+            request=request,
+            attribution=attribution,
+            now=datetime.now(timezone.utc),
+        )
+    )
+
+    runtime[DATA_ATTRIBUTION_FOUNDATION] = _FailingAttributionFoundation()
+    hass.data[DOMAIN] = {"entry_1": runtime}
+
+    await async_register_services(hass)
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_GET_IDENTITY_CONTEXT,
+        {
+            "conversation_id": "conv_1",
+            "device_id": "device_kitchen",
+            "satellite_id": "satellite_kitchen",
+            "room_id": "kitchen",
+            "turn_index": 1,
+            "pipeline_id": "assist_pipeline_primary",
+        },
+        return_response=True,
+    )
+
+    assert response["success"] is True
+    assert response["identity_context"]["state"] == "known"
+    assert response["identity_context"]["person_id"] == "person_123"
+    assert response["runtime_attribution"]["correlation"]["conversation_id"] == "conv_1"
 
 
 @pytest.mark.asyncio
@@ -397,6 +544,14 @@ async def test_get_identity_context_service_returns_safe_projection() -> None:
 
     assert response["success"] is True
     assert response["reason_code"] == "ready"
+    assert response["correlation"] == {
+        "conversation_id": None,
+        "device_id": None,
+        "satellite_id": None,
+        "room_id": None,
+        "turn_index": None,
+        "pipeline_id": None,
+    }
     assert response["identity_context"]["state"] in {
         "known",
         "unknown",
@@ -404,6 +559,37 @@ async def test_get_identity_context_service_returns_safe_projection() -> None:
         "unavailable",
     }
     assert response["identity_context"]["source"] == "voice_identity"
+
+
+@pytest.mark.asyncio
+async def test_get_identity_context_service_propagates_correlation_fields() -> None:
+    hass = _FakeHass()
+    hass.data[DOMAIN] = {"entry_1": _runtime()}
+
+    await async_register_services(hass)
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_GET_IDENTITY_CONTEXT,
+        {
+            "audio_ref": "sample_audio_001",
+            "conversation_id": "conv_1",
+            "device_id": "device_kitchen",
+            "satellite_id": "satellite_kitchen",
+            "room_id": "kitchen",
+            "turn_index": 8,
+            "pipeline_id": "assist_pipeline_primary",
+        },
+        return_response=True,
+    )
+
+    assert response["correlation"] == {
+        "conversation_id": "conv_1",
+        "device_id": "device_kitchen",
+        "satellite_id": "satellite_kitchen",
+        "room_id": "kitchen",
+        "turn_index": 8,
+        "pipeline_id": "assist_pipeline_primary",
+    }
 
 
 @pytest.mark.asyncio
